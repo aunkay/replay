@@ -311,6 +311,15 @@ export default function AnalysisPanel({
             ))}
         </details>
       </div>
+      {!liveStreams &&
+        bars.length > 0 &&
+        settings.interval !== session.market.interval && (
+          <p className="analysis-sync-note">
+            Follows the base replay clock. A new {settings.interval} candle
+            appears when that interval closes. Linked views keep recent candles
+            readable.
+          </p>
+        )}
       {error && (
         <p className="analysis-empty" role="alert">
           {error}
@@ -412,6 +421,7 @@ export default function AnalysisPanel({
           selectedDrawingId={selection}
           onDrawingSelect={setSelection}
           blind={blind}
+          syncClock={clock}
           syncGroup={syncGroup}
           syncCrosshair={syncCrosshair}
           syncViewport={syncViewport}

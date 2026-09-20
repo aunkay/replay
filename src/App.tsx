@@ -1574,6 +1574,7 @@ export default function App() {
                   }}
                   blind={blind}
                   syncPrimary
+                  syncClock={bar.endTime ?? market.bars[cursor + 1]?.time ?? bar.time}
                   syncGroup={panels.length ? 'workspace' : undefined}
                   syncCrosshair={linked}
                   syncViewport={linkedRange}

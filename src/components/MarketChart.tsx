@@ -36,6 +36,12 @@ import {
   type NormalizationContext,
 } from '../lib/chartNormalization';
 import BracketHandles from './BracketHandles';
+import {
+  linkedEndingTime,
+  linkedLogicalRange,
+  READABLE_CANDLE_SPACING,
+  CHART_RIGHT_PADDING,
+} from '../lib/chartViewport';
 import DrawingLayer from './DrawingLayer';
 import { ComparisonAxisLabel } from './ComparisonAxisLabel';
 
@@ -66,6 +72,7 @@ interface MarketChartProps {
   syncCrosshair?: boolean;
   syncViewport?: boolean;
   syncPrimary?: boolean;
+  syncClock?: number;
   onCrosshair?: (bar: Candle | null) => void;
   drawingTool: DrawingTool;
   drawings: Drawing[];
@@ -373,6 +380,7 @@ export default function MarketChart({
   syncCrosshair = true,
   syncViewport = true,
   syncPrimary = false,
+  syncClock,
   drawingTool,
   drawings,
   onDrawingsChange,
@@ -383,6 +391,8 @@ export default function MarketChart({
 }: MarketChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const instanceRef = useRef<ChartInstance | null>(null);
+  const syncClockRef = useRef(syncClock);
+  syncClockRef.current = syncClock;
   const [ready, setReady] = useState<ChartInstance | null>(null);
   const [paneCount, setPaneCount] = useState(0);
   const [volumeTooltip, setVolumeTooltip] = useState<{
@@ -463,6 +473,9 @@ export default function MarketChart({
         rightOffset: 6,
         barSpacing: 8,
         minBarSpacing: 2,
+        // Adding a column must not preserve full-width candle pixels and
+        // leave just a few oversized candles in the narrower base chart.
+        lockVisibleTimeRangeOnResize: true,
         shiftVisibleRangeOnNewBar: false,
       },
       localization: { locale: 'en-US' },
@@ -623,7 +636,21 @@ export default function MarketChart({
       line.applyOptions({ priceFormat: format });
       if (!canAppend || !previousRange) {
         pendingReplayRangeRef.current = {
-          from: Math.max(-2, bars.length - 90),
+          from: Math.max(
+            -2,
+            bars.length -
+              (syncGroup
+                ? Math.min(
+                    90,
+                    Math.max(
+                      10,
+                      Math.floor(
+                        chart.timeScale().width() / READABLE_CANDLE_SPACING,
+                      ) - CHART_RIGHT_PADDING,
+                    ),
+                  )
+                : 90),
+          ),
           to: bars.length + 6,
         };
       } else if (bars.length > previous.length) {
@@ -1061,6 +1088,9 @@ export default function MarketChart({
       if (range) {
         source.dataset.visibleTimeFrom = String(range.from);
         source.dataset.visibleTimeTo = String(range.to);
+        source.dataset.barSpacing = String(
+          ready.chart.timeScale().options().barSpacing,
+        );
       }
       if (!viewportOwners.has(syncGroup) && syncPrimary)
         viewportOwners.set(syncGroup, source);
@@ -1072,7 +1102,20 @@ export default function MarketChart({
       )
         window.dispatchEvent(
           new CustomEvent('replay:range-sync', {
-            detail: { group: syncGroup, source, range },
+            detail: {
+              group: syncGroup,
+              source,
+              range: {
+                ...range,
+                to: linkedEndingTime(
+                  barsByTimeRef.current.get(Number(range.to)),
+                  Number(range.to),
+                  Number(range.to) === previousBarsRef.current.at(-1)?.time
+                    ? syncClockRef.current
+                    : undefined,
+                ),
+              },
+            },
           }),
         );
     };
@@ -1089,13 +1132,13 @@ export default function MarketChart({
         if (message.range) {
           const available = previousBarsRef.current;
           if (!available.length) return;
-          const from = Math.max(Number(message.range.from), available[0].time);
-          const to = Math.min(Number(message.range.to), available.at(-1)!.time);
-          // Never scroll a recipient into an unavailable/future-only range.
-          if (Number.isFinite(from) && Number.isFinite(to) && from < to)
-            ready.chart
-              .timeScale()
-              .setVisibleRange({ from: timestamp(from), to: timestamp(to) });
+          const logical = linkedLogicalRange(
+            available,
+            Number(message.range.from),
+            Number(message.range.to),
+            ready.chart.timeScale().width(),
+          );
+          if (logical) ready.chart.timeScale().setVisibleLogicalRange(logical);
         } else if (message.time) {
           const available = previousBarsRef.current;
           // Resolve the candle containing this instant, rather than requiring

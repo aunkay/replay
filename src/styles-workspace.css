@@ -1208,3 +1208,11 @@
     margin: 0;
   }
 }
+
+.analysis-sync-note {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #a3adbd;
+}
