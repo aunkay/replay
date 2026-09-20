@@ -14,6 +14,8 @@ export type Candle = {
   low: number;
   close: number;
   volume: number;
+  endTime?: number;
+  complete?: boolean;
 };
 
 export type Side = 'buy' | 'sell';
@@ -37,6 +39,13 @@ export type Order = {
   /** Set only for fills that close shares; net of this fill's commission. */
   realizedPnl?: number;
   reason?: string;
+  stopLoss?: number;
+  takeProfit?: number;
+  parentId?: string;
+  role?: 'stopLoss' | 'takeProfit';
+  reduceOnly?: boolean;
+  ambiguous?: boolean;
+  plannedRisk?: number;
 };
 export type Position = { quantity: number; averagePrice: number };
 export type EquityPoint = { time: number; equity: number };
@@ -49,7 +58,16 @@ export type TradingState = {
   realizedPnl: number;
   feesPaid: number;
 };
-export type OrderRequest = Pick<Order, 'side' | 'type' | 'quantity' | 'price'>;
+export type OrderRequest = Pick<
+  Order,
+  | 'side'
+  | 'type'
+  | 'quantity'
+  | 'price'
+  | 'stopLoss'
+  | 'takeProfit'
+  | 'plannedRisk'
+>;
 export type TradingMetrics = {
   equity: number;
   cash: number;
@@ -90,7 +108,7 @@ function latestTime(state: TradingState): number | undefined {
   return state.equityHistory.at(-1)?.time;
 }
 
-function withEquity(state: TradingState, bar: Candle): TradingState {
+export function withEquity(state: TradingState, bar: Candle): TradingState {
   const equity = state.cash + state.position.quantity * bar.close;
   if (!Number.isFinite(equity)) return state;
   const point = { time: bar.time, equity };
@@ -153,7 +171,7 @@ function rejectOrder(
   return replaceOrder(state, { ...order, status: 'rejected', reason });
 }
 
-function executeOrder(
+function executeFill(
   state: TradingState,
   order: Order,
   basePrice: number,
@@ -264,6 +282,173 @@ function executeOrder(
   );
 }
 
+function executeOrder(
+  state: TradingState,
+  order: Order,
+  price: number,
+  time: number,
+): TradingState {
+  if (order.reduceOnly) {
+    if (
+      !state.position.quantity ||
+      Math.sign(state.position.quantity) === (order.side === 'buy' ? 1 : -1)
+    )
+      return cancelOrder(state, order.id);
+    order = {
+      ...order,
+      quantity: Math.min(order.quantity, Math.abs(state.position.quantity)),
+    };
+  }
+  let next = executeFill(state, order, price, time);
+  if (next.orders.find((o) => o.id === order.id)?.status !== 'filled')
+    return next;
+  const replaced =
+    order.stopLoss !== undefined || order.takeProfit !== undefined;
+  const reversed =
+    Math.sign(state.position.quantity) !== Math.sign(next.position.quantity);
+  next = {
+    ...next,
+    orders: next.orders.map((o) =>
+      o.status === 'pending' && o.reduceOnly
+        ? !next.position.quantity || order.reduceOnly || replaced || reversed
+          ? { ...o, status: 'cancelled' as const }
+          : { ...o, quantity: Math.abs(next.position.quantity) }
+        : o,
+    ),
+  };
+  if (next.position.quantity && replaced && !order.reduceOnly) {
+    const children: Order[] = [];
+    for (const role of ['stopLoss', 'takeProfit'] as const) {
+      if (order[role] === undefined) continue;
+      children.push({
+        id: `order-${next.orders.length + children.length + 1}`,
+        side: next.position.quantity > 0 ? 'sell' : 'buy',
+        type: role === 'stopLoss' ? 'stop' : 'limit',
+        quantity: Math.abs(next.position.quantity),
+        price: order[role],
+        status: 'pending',
+        createdAt: time,
+        parentId: order.id,
+        role,
+        reduceOnly: true,
+      });
+    }
+    next = { ...next, orders: [...next.orders, ...children] };
+  }
+  return next;
+}
+
+/** Replace protection prospectively without changing the position. */
+export function editBracket(
+  state: TradingState,
+  stopLoss: number | undefined,
+  takeProfit: number | undefined,
+  bar: Candle,
+): TradingState {
+  if (!state.position.quantity)
+    throw new Error('Open a position before editing protection.');
+  validateProtection(
+    state.position.quantity > 0 ? 'buy' : 'sell',
+    bar.close,
+    stopLoss,
+    takeProfit,
+  );
+  let next = {
+    ...state,
+    orders: state.orders.map((o) =>
+      o.reduceOnly && o.status === 'pending'
+        ? { ...o, status: 'cancelled' as const }
+        : o,
+    ),
+  };
+  for (const role of ['stopLoss', 'takeProfit'] as const) {
+    const price = role === 'stopLoss' ? stopLoss : takeProfit;
+    if (price !== undefined)
+      next = {
+        ...next,
+        orders: [
+          ...next.orders,
+          {
+            id: `order-${next.orders.length + 1}`,
+            side: state.position.quantity > 0 ? 'sell' : 'buy',
+            type: role === 'stopLoss' ? 'stop' : 'limit',
+            quantity: Math.abs(state.position.quantity),
+            price,
+            createdAt: bar.time,
+            status: 'pending',
+            role,
+            reduceOnly: true,
+          },
+        ],
+      };
+  }
+  return next;
+}
+
+function validateProtection(
+  side: Side,
+  entry: number,
+  stop?: number,
+  target?: number,
+) {
+  const direction = side === 'buy' ? 1 : -1;
+  if (
+    stop !== undefined &&
+    (!finitePositive(stop) || (entry - stop) * direction <= 0)
+  )
+    throw new Error('Stop-loss must be beyond the entry on the loss side.');
+  if (
+    target !== undefined &&
+    (!finitePositive(target) || (target - entry) * direction <= 0)
+  )
+    throw new Error('Take-profit must be beyond the entry on the profit side.');
+}
+
+function processProtection(
+  state: TradingState,
+  bar: Candle,
+  parentId?: string,
+  allowTarget = true,
+  includeCurrent = false,
+): TradingState {
+  const candidates = state.orders.filter(
+    (o) =>
+      o.status === 'pending' &&
+      o.reduceOnly &&
+      (parentId
+        ? o.parentId === parentId
+        : o.createdAt < bar.time ||
+          (includeCurrent && o.createdAt === bar.time)),
+  );
+  const touched = candidates.filter((o) =>
+    o.type === 'stop'
+      ? o.side === 'sell'
+        ? bar.low <= o.price!
+        : bar.high >= o.price!
+      : allowTarget &&
+        (o.side === 'sell' ? bar.high >= o.price! : bar.low <= o.price!),
+  );
+  const chosen = touched.find((o) => o.type === 'stop') ?? touched[0];
+  if (!chosen) return state;
+  const price =
+    chosen.type === 'stop'
+      ? chosen.side === 'sell'
+        ? Math.min(bar.open, chosen.price!)
+        : Math.max(bar.open, chosen.price!)
+      : chosen.side === 'sell'
+        ? Math.max(bar.open, chosen.price!)
+        : Math.min(bar.open, chosen.price!);
+  return executeOrder(
+    state,
+    {
+      ...chosen,
+      ambiguous: touched.length > 1 || Boolean(parentId && !allowTarget),
+    },
+    price,
+    bar.time,
+  );
+}
+
 /** Returns a new state; the submitted order is the final entry in `orders`. */
 export function submitOrder(
   state: TradingState,
@@ -287,7 +472,36 @@ export function submitOrder(
     reason =
       'Cannot submit orders on an earlier candle; reset the account to rewind.';
 
+  if (!reason) {
+    try {
+      validateProtection(
+        request.side,
+        request.type === 'market' ? bar.close : request.price!,
+        request.stopLoss,
+        request.takeProfit,
+      );
+    } catch (error) {
+      reason = (error as Error).message;
+    }
+    if (
+      state.position.quantity &&
+      Math.sign(state.position.quantity) ===
+        (request.side === 'buy' ? 1 : -1) &&
+      state.orders.some((o) => o.reduceOnly && o.status === 'pending') &&
+      request.stopLoss === undefined &&
+      request.takeProfit === undefined
+    )
+      reason =
+        'Provide replacement protection levels when scaling into a protected position.';
+  }
   const order: Order = {
+    ...(request.stopLoss !== undefined ? { stopLoss: request.stopLoss } : {}),
+    ...(request.takeProfit !== undefined
+      ? { takeProfit: request.takeProfit }
+      : {}),
+    ...(request.plannedRisk !== undefined
+      ? { plannedRisk: request.plannedRisk }
+      : {}),
     id: `order-${state.orders.length + 1}`,
     side: request.side,
     type: request.type,
@@ -311,12 +525,18 @@ export function submitOrder(
  * Reveal one candle and process eligible pending orders in submission order.
  * Earlier/invalid candles are ignored, so state cannot silently trade backward.
  */
-export function advanceBar(state: TradingState, bar: Candle): TradingState {
+export function advanceBar(
+  state: TradingState,
+  bar: Candle,
+  protectionAtOpen = false,
+): TradingState {
   const previousTime = latestTime(state);
   if (!validBar(bar) || (previousTime !== undefined && bar.time < previousTime))
     return state;
-  let next = state;
-  for (const order of state.orders) {
+  let next = processProtection(state, bar, undefined, true, protectionAtOpen);
+  for (const original of state.orders) {
+    const order = next.orders.find((o) => o.id === original.id)!;
+    if (order.reduceOnly) continue;
     if (order.status !== 'pending' || order.createdAt >= bar.time) continue;
     let basePrice: number | undefined;
     const target = order.price;
@@ -332,8 +552,10 @@ export function advanceBar(state: TradingState, bar: Candle): TradingState {
       if (order.side === 'sell' && bar.low <= target)
         basePrice = Math.min(bar.open, target);
     }
-    if (basePrice !== undefined)
+    if (basePrice !== undefined) {
       next = executeOrder(next, order, basePrice, bar.time);
+      next = processProtection(next, bar, order.id, basePrice === bar.open);
+    }
   }
   return withEquity(next, bar);
 }

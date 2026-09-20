@@ -39,6 +39,8 @@ class Bar(BaseModel):
     low: float
     close: float
     volume: float
+    endTime: int | None = None
+    complete: bool | None = None
 
 
 class DateRange(BaseModel):
@@ -51,6 +53,7 @@ class MarketData(BaseModel):
     name: str
     currency: str | None
     exchange: str | None
+    exchangeTimezone: str = "UTC"
     interval: str
     source: Literal["yfinance"] = "yfinance"
     adjusted: Literal[True] = True
@@ -185,11 +188,11 @@ def clean_bars(frame: pd.DataFrame, interval: str) -> tuple[list[Bar], list[str]
     return [cleaned[stamp] for stamp in sorted(cleaned)], warnings
 
 
-def _load_market_data(request: DataRequest) -> MarketData:
+def _load_market_data(request: DataRequest, live: bool = False) -> MarketData:
     now = monotonic()
     with _cache_lock:
         cached = _cache.get(request)
-        if cached is not None and now - cached[0] < CACHE_TTL_SECONDS:
+        if not live and cached is not None and now - cached[0] < CACHE_TTL_SECONDS:
             _cache.move_to_end(request)
             return cached[1]
 
@@ -207,7 +210,10 @@ def _load_market_data(request: DataRequest) -> MarketData:
             kwargs.update(start=request.start.isoformat(), end=request.end.isoformat(), period=None)
         else:
             kwargs["period"] = request.period
-        frame = instrument.history(**kwargs)
+        from backend.provider import call
+        frame = call(instrument.history, **kwargs)
+    except HTTPException:
+        raise
     except YFRateLimitError as exc:
         raise HTTPException(429, "Yahoo Finance is rate-limiting requests. Wait a minute and try again.", headers={"Retry-After": "60"}) from exc
     except (YFPricesMissingError, YFTzMissingError) as exc:
@@ -230,12 +236,15 @@ def _load_market_data(request: DataRequest) -> MarketData:
     currency = metadata.get("currency")
     if not currency:
         warnings.append("The data provider did not report the instrument currency.")
+    from backend.boundaries import annotate
+    annotate(bars, request.interval, metadata, request.ticker)
     result = MarketData(
         ticker=request.ticker,
         name=metadata.get("longName") or metadata.get("shortName") or request.ticker,
         currency=currency,
         exchange=metadata.get("fullExchangeName") or metadata.get("exchangeName"),
         interval=request.interval,
+        exchangeTimezone=metadata.get("exchangeTimezoneName") or "UTC",
         bars=bars,
         fetchedAt=datetime.now(timezone.utc).isoformat(),
         range=DateRange(
@@ -278,6 +287,11 @@ def market_data(
     # blocking network requests never block the ASGI event loop.
     return _load_market_data(validate_request(ticker, interval, period, start, end))
 
+
+from backend.storage import router as storage_router
+app.include_router(storage_router)
+from backend.live import router as live_router
+app.include_router(live_router)
 
 dist = Path(__file__).resolve().parent.parent / "dist"
 if dist.is_dir() and (dist / "index.html").is_file():

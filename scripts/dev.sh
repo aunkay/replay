@@ -26,7 +26,7 @@ if [[ ! -x "$replay_root/node_modules/.bin/vite" ]]; then
 fi
 
 # Separate process groups let cleanup include Vite/npm and Uvicorn's reloader
-# children. The launcher also stops the sibling when either server exits.
+# children. The launcher also stops the other services when one exits.
 exec "$replay_python" - "$replay_root" <<'PY'
 import os
 from pathlib import Path
@@ -59,9 +59,10 @@ signal.signal(signal.SIGTERM, request_stop)
 
 try:
     print('Replay: http://localhost:5173 | API: http://127.0.0.1:8000', flush=True)
-    print('Press Ctrl+C to stop both servers.', flush=True)
+    print('Press Ctrl+C to stop all three services.', flush=True)
     commands = [
         [sys.executable, '-m', 'uvicorn', 'backend.main:app', '--reload', '--host', '127.0.0.1', '--port', '8000'],
+        ['npm', 'run', 'engine'],
         ['npm', 'run', 'dev', '--', '--port', '5173', '--strictPort'],
     ]
     for command in commands:

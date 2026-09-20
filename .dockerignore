@@ -16,3 +16,5 @@ backend/tests/
 **/__pycache__/
 **/*.pyc
 **/*.test.ts
+!engine/
+!engine/**

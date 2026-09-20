@@ -33,6 +33,14 @@ import {
   Wallet,
   X,
 } from 'lucide-react';
+import WorkspaceHub from './components/WorkspaceHub';
+import RiskTicket, { type ProtectionDraft } from './components/RiskTicket';
+import AnalysisPanel, {
+  newPanel,
+  type PanelSettings,
+} from './components/AnalysisPanel';
+import { useServerSession } from './lib/server';
+import { useLive } from './lib/useLive';
 import MarketChart from './components/MarketChart';
 import EquityChart from './components/EquityChart';
 import IndicatorMenu from './components/IndicatorMenu';
@@ -47,6 +55,7 @@ import { INDICATORS } from './lib/indicators';
 import { type DrawingTool, type Drawing } from './lib/drawings';
 import { useChartWorkspace } from './lib/chartWorkspace';
 import {
+  editBracket,
   advanceBar,
   cancelOrder,
   closePosition,
@@ -65,12 +74,14 @@ import {
   defaultPeriod,
   exportCsv,
   fetchMarketData,
-  formatDate,
+  formatDate as realFormatDate,
   INTERVALS,
   type MarketData,
 } from './lib/data';
 
 type Session = {
+  mode?: 'replay' | 'blind' | 'live';
+  blind?: { seed: number; end: number; finished: boolean };
   market: MarketData;
   cursor: number;
   startCursor: number;
@@ -159,6 +170,46 @@ export default function App() {
   const [session, setSession] = useState<Session>(initialSession);
   const { market, cursor, startCursor, account } = session;
   const bar = market.bars[cursor];
+  const library = useServerSession(session, setSession);
+  const [protection, setProtection] = useState<ProtectionDraft>({});
+  const [panels, setPanels] = useState<PanelSettings[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('replay-panels:v1') || '[]').slice(
+        0,
+        3,
+      );
+    } catch {
+      return [];
+    }
+  });
+  const [linked, setLinked] = useState(true);
+  const [linkedRange, setLinkedRange] = useState(true);
+  useEffect(() => {
+    const reload = () => {
+      try {
+        setPanels(
+          JSON.parse(localStorage.getItem('replay-panels:v1') || '[]').slice(
+            0,
+            3,
+          ),
+        );
+      } catch {
+        setPanels([]);
+      }
+    };
+    window.addEventListener('replay:preferences-restored', reload);
+    return () =>
+      window.removeEventListener('replay:preferences-restored', reload);
+  }, []);
+  useEffect(() => {
+    localStorage.setItem('replay-panels:v1', JSON.stringify(panels));
+  }, [panels]);
+  const blind = Boolean(session.blind && !session.blind.finished);
+  const formatDate = (time: number, intraday?: boolean) =>
+    blind
+      ? `Candle ${market.bars.findIndex((b) => b.time === time) - startCursor + 1}`
+      : realFormatDate(time, intraday);
+
   const [playing, setPlaying] = useState(false);
   const [chartExpanded, setChartExpanded] = useState(false);
   const [mobileSection, setMobileSection] = useState('chart');
@@ -172,13 +223,53 @@ export default function App() {
   const [showVolume, setShowVolume] = useState(true);
   const marketKey = `${market.source}:${market.ticker}:${market.interval}`;
   const chartWorkspace = useChartWorkspace(marketKey);
-  const comparisons = useComparisons(market);
+  const [liveMarkets, setLiveMarkets] = useState<MarketData[] | undefined>(
+    undefined,
+  );
+  const comparisons = useComparisons(market, liveMarkets);
   const [comparisonSlot, setComparisonSlot] = useState(0);
   const benchmark = comparisons[comparisonSlot];
   const activeComparisonCount = comparisons.filter(
     (item) => item.ticker,
   ).length;
   const chartDisplay = useChartDisplay();
+  const symbols = Array.from(
+    new Set([
+      market.ticker,
+      ...comparisons.flatMap((c) => (c.ticker ? [c.ticker] : [])),
+      ...panels.flatMap((p) => [p.ticker, ...p.comparisons]),
+    ]),
+  );
+  const liveStreams = [
+    { ticker: market.ticker, interval: market.interval },
+    ...comparisons.flatMap((c) =>
+      c.ticker ? [{ ticker: c.ticker, interval: market.interval }] : [],
+    ),
+    ...panels.flatMap((p) =>
+      [p.ticker, ...p.comparisons].map((ticker) => ({
+        ticker,
+        interval: p.interval,
+      })),
+    ),
+  ];
+  const replayLibrary = useRef<string | null>(null);
+  const live = useLive(
+    session,
+    setSession,
+    library.client,
+    liveStreams,
+    library.record?.id,
+  );
+  useEffect(() => {
+    setLiveMarkets(
+      live.active
+        ? (live.state?.streams?.flatMap((s: any) =>
+            s.market ? [s.market] : [],
+          ) ?? [])
+        : undefined,
+    );
+  }, [live.state, live.active]);
+
   const [benchmarkSymbol, setBenchmarkSymbol] = useState('SPY');
   const [comparisonError, setComparisonError] = useState('');
   const comparisonDialogRef = useRef(0);
@@ -259,10 +350,18 @@ export default function App() {
     setSlippage(String(account.config.slippageBps));
     setDialog('settings');
   };
-  const metrics = getMetrics(account, bar.close);
+  const liveMarket = live.active
+    ? (live.state?.streams?.find(
+        (s: any) =>
+          s.ticker === market.ticker && s.interval === market.interval,
+      )?.market as MarketData | undefined)
+    : undefined;
+  const liveQuote = liveMarket?.bars.at(-1);
+  const currentPrice = liveQuote?.close ?? bar.close;
+  const metrics = getMetrics(account, currentPrice);
   const visibleBars = useMemo(
-    () => market.bars.slice(0, cursor + 1),
-    [market.bars, cursor],
+    () => liveMarket?.bars ?? market.bars.slice(0, cursor + 1),
+    [market.bars, cursor, liveMarket],
   );
   const normalizedView = useMemo(
     () =>
@@ -281,6 +380,7 @@ export default function App() {
       comparisons[1].data,
       comparisons[2].data,
       comparisons[3].data,
+      comparisons[4].data,
       chartDisplay.normalization,
       chartDisplay.scale,
       chartDisplay.window,
@@ -307,15 +407,17 @@ export default function App() {
       comparisons[1].data,
       comparisons[2].data,
       comparisons[3].data,
+      comparisons[4].data,
       comparisons[0].color,
       comparisons[1].color,
       comparisons[2].color,
       comparisons[3].color,
+      comparisons[4].color,
     ],
   );
   const filled = account.orders.filter((order) => order.status === 'filled');
   const pending = account.orders.filter((order) => order.status === 'pending');
-  const displayBar = hoverBar ?? bar;
+  const displayBar = hoverBar ?? liveQuote ?? bar;
   const previousClose = cursor > 0 ? market.bars[cursor - 1].close : bar.open;
   const change = bar.close - previousClose;
   const intraday = !['1d', '5d', '1wk', '1mo', '3mo'].includes(market.interval);
@@ -437,6 +539,22 @@ export default function App() {
   }, [chartExpanded, dialog]);
 
   const step = useCallback(() => {
+    if (live.active || session.mode === 'live') return;
+    if (
+      session.blind &&
+      !session.blind.finished &&
+      session.cursor >= session.blind.end
+    ) {
+      finishBlind();
+      return;
+    }
+    if (library.record) {
+      void library
+        .command({ type: 'advance' })
+        .catch((error) => setNotice({ text: error.message, error: true }));
+      return;
+    }
+
     setSession((previous) => {
       const next = previous.cursor + 1;
       if (next >= previous.market.bars.length) return previous;
@@ -447,7 +565,7 @@ export default function App() {
       };
     });
     setHoverBar(null);
-  }, []);
+  }, [live.active, session.blind, session.cursor, library.record]);
 
   useEffect(() => {
     if (!playing) return;
@@ -467,7 +585,7 @@ export default function App() {
         target.closest('input,select,textarea,button,[contenteditable="true"]')
       )
         return;
-      if (event.code === 'Space') {
+      if (event.code === 'Space' && !live.active && session.mode !== 'live') {
         event.preventDefault();
         setPlaying((value) => !value);
       }
@@ -482,7 +600,7 @@ export default function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [dialog, step]);
+  }, [dialog, step, live.active, session.mode]);
 
   useEffect(() => {
     if (!dialog) return;
@@ -553,6 +671,13 @@ export default function App() {
     nextTicker = market.ticker,
     nextInterval = market.interval,
   ) {
+    if (blind || live.active) {
+      setNotice({
+        text: 'Finish the exercise or leave Live before replacing data.',
+        error: true,
+      });
+      return;
+    }
     setTicker(nextTicker);
     setIntervalValue(nextInterval);
     setPeriod(defaultPeriod(nextInterval));
@@ -596,14 +721,64 @@ export default function App() {
     }
   }
 
+  function tradingCommand(command: {
+    type: string;
+    id?: string;
+    stopLoss?: number;
+    takeProfit?: number;
+  }) {
+    if (live.active || library.record) {
+      void (
+        live.active ? live.command(command) : library.command(command)
+      ).catch((error) => setNotice({ text: error.message, error: true }));
+      return;
+    }
+    setSession((previous) => ({
+      ...previous,
+      account:
+        command.type === 'close'
+          ? closePosition(
+              previous.account,
+              previous.market.bars[previous.cursor],
+            )
+          : command.type === 'bracket'
+            ? editBracket(
+                previous.account,
+                command.stopLoss,
+                command.takeProfit,
+                previous.market.bars[previous.cursor],
+              )
+            : cancelOrder(previous.account, command.id!),
+    }));
+  }
   function placeOrder(event: React.FormEvent) {
     event.preventDefault();
+    if (session.mode === 'live' && !live.active) {
+      setNotice({
+        text: 'Enable Live to trade this saved live account.',
+        error: true,
+      });
+      return;
+    }
+    if (protection.sizingError) {
+      setNotice({ text: protection.sizingError, error: true });
+      return;
+    }
     const request = {
+      ...protection,
       side,
       type: orderType,
       quantity: Number(quantity),
       ...(orderType === 'market' ? {} : { price: Number(orderPrice) }),
     };
+    if (live.active || library.record) {
+      void (
+        live.active
+          ? live.command({ type: 'order', order: request })
+          : library.command({ type: 'order', order: request })
+      ).catch((error) => setNotice({ text: error.message, error: true }));
+      return;
+    }
     setSession((previous) => ({
       ...previous,
       account: submitOrder(
@@ -615,6 +790,14 @@ export default function App() {
   }
 
   function seek(target: number) {
+    if (live.active || blind) return;
+    if (library.record && target >= cursor) {
+      void library
+        .command({ type: 'advance', target })
+        .catch((error) => setNotice({ text: error.message, error: true }));
+      return;
+    }
+
     setPlaying(false);
     setHoverBar(null);
     if (target < cursor) {
@@ -631,6 +814,7 @@ export default function App() {
   }
 
   function reset(at = startCursor, config = account.config) {
+    if (blind || live.active) return;
     setPlaying(false);
     setSession(freshSession(market, config, at));
     setDrawingTool('cursor');
@@ -641,7 +825,76 @@ export default function App() {
     setNotice({ text: 'Fresh account. Your new replay session is ready.' });
   }
 
+  function startBlind(count: number) {
+    if (
+      !Number.isInteger(count) ||
+      count < 1 ||
+      count >= market.bars.length - 1
+    ) {
+      setNotice({
+        text: 'Choose an exercise length smaller than the dataset.',
+        error: true,
+      });
+      return;
+    }
+    const seed = crypto.getRandomValues(new Uint32Array(1))[0];
+    const warmup = Math.min(50, Math.max(1, market.bars.length - count - 1));
+    const at = warmup + (seed % (market.bars.length - count - warmup));
+    setPlaying(false);
+    library.detach();
+    const next = {
+      ...freshSession(market, account.config, at),
+      mode: 'blind' as const,
+      blind: { seed, end: at + count, finished: false },
+    };
+    setSession(next);
+    void library.save(`Blind ${market.ticker}`, next).catch((error) =>
+      setNotice({
+        text: `Exercise started locally. Server save: ${error.message}`,
+        error: true,
+      }),
+    );
+  }
+
+  function finishBlind() {
+    setPlaying(false);
+    setSession((previous) => {
+      const account = closePosition(
+        previous.account,
+        previous.market.bars[previous.cursor],
+      );
+      return {
+        ...previous,
+        blind: previous.blind
+          ? { ...previous.blind, finished: true }
+          : undefined,
+        account: {
+          ...account,
+          orders: account.orders.map((o) =>
+            o.status === 'pending'
+              ? {
+                  ...o,
+                  status: 'cancelled' as const,
+                  reason: 'Exercise finished',
+                }
+              : o,
+          ),
+        },
+      };
+    });
+  }
+  useEffect(() => {
+    if (blind && session.blind && cursor >= session.blind.end) finishBlind();
+  }, [blind, cursor, session.blind?.end]);
   function exportSession() {
+    if (blind) {
+      setNotice({
+        text: 'Finish the blind exercise before exporting.',
+        error: true,
+      });
+      return;
+    }
+
     exportCsv(
       [
         [
@@ -809,6 +1062,154 @@ export default function App() {
             </div>
           </div>
 
+          <div className="workspace-tools">
+            {!blind && !live.active && (
+              <WorkspaceHub
+                session={session}
+                library={library}
+                onPause={() => setPlaying(false)}
+                onBlind={startBlind}
+              />
+            )}
+            {!blind && (
+              <button
+                className={`button ${live.active ? 'primary' : 'ghost'}`}
+                aria-pressed={live.active}
+                disabled={live.busy}
+                onClick={async () => {
+                  setPlaying(false);
+                  const wasLive = live.active;
+                  if (!wasLive) {
+                    replayLibrary.current = library.record?.id ?? null;
+                    library.detach();
+                  }
+                  const success = await live.toggle();
+                  if (
+                    ((wasLive && success) || (!wasLive && !success)) &&
+                    replayLibrary.current
+                  ) {
+                    void library
+                      .open(replayLibrary.current)
+                      .catch((e) =>
+                        setNotice({ text: e.message, error: true }),
+                      );
+                    replayLibrary.current = null;
+                  }
+                }}
+              >
+                ● Live
+              </button>
+            )}
+            <label>
+              Charts{' '}
+              <select
+                aria-label="Chart panel count"
+                value={panels.length + 1}
+                onChange={(e) => {
+                  const count = Number(e.target.value) - 1;
+                  setPanels((previous) =>
+                    Array.from(
+                      { length: count },
+                      (_, i) =>
+                        previous[i] ?? newPanel(market.ticker, market.interval),
+                    ),
+                  );
+                }}
+              >
+                {[1, 2, 3, 4].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {panels.length > 0 && (
+              <label>
+                <input
+                  type="checkbox"
+                  checked={linked}
+                  onChange={(e) => setLinked(e.target.checked)}
+                />{' '}
+                Link crosshair
+              </label>
+            )}
+            {panels.length > 0 && (
+              <label>
+                <input
+                  type="checkbox"
+                  checked={linkedRange}
+                  onChange={(e) => setLinkedRange(e.target.checked)}
+                />{' '}
+                Link time range
+              </label>
+            )}
+            {blind && (
+              <>
+                <span>
+                  Blind exercise · {cursor - startCursor} /{' '}
+                  {session.blind!.end - startCursor} candles
+                </span>
+                <button onClick={finishBlind}>Finish exercise</button>
+              </>
+            )}
+          </div>
+          {panels.length > 0 && (
+            <nav className="chart-jump-strip" aria-label="Chart panels">
+              <button onClick={() => scrollToSection('chart')}>
+                Trading · {market.ticker}
+              </button>
+              {panels.map((panel, index) => (
+                <button
+                  key={panel.id}
+                  onClick={() =>
+                    document
+                      .getElementById(`analysis-${panel.id}`)
+                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }
+                >
+                  {panel.name || `Chart ${index + 2}`} · {panel.ticker}
+                </button>
+              ))}
+            </nav>
+          )}
+          {live.active && (
+            <section className="live-status" aria-label="Live update status">
+              <strong>Live · completed-bar paper trading</strong>
+              <button onClick={() => void live.refresh()}>Refresh now</button>
+              {live.state?.pendingOrders?.map((p: any) => (
+                <span key={p.key}>
+                  Queued {p.command.order?.side ?? p.command.type}{' '}
+                  {p.command.order?.quantity ?? ''}{' '}
+                  <button onClick={() => void live.cancelQueued(p.key)}>
+                    Cancel queued order
+                  </button>
+                </span>
+              ))}
+              {liveQuote && liveQuote.complete === false && (
+                <span>
+                  Latest candle is provisional · {quote(liveQuote.close)}
+                </span>
+              )}
+              {live.error && (
+                <p role="alert">
+                  {live.error}
+                  <button onClick={() => void live.resume()}>
+                    Acknowledge gap & resume
+                  </button>
+                </p>
+              )}
+              {live.state?.streams?.map((s: any) => (
+                <span key={`${s.ticker}:${s.interval}`}>
+                  {s.ticker} {s.interval} · {s.status} · next{' '}
+                  {new Date(s.nextAttempt * 1000).toLocaleTimeString()}
+                  {s.lastSuccess
+                    ? ` · updated ${new Date(s.lastSuccess * 1000).toLocaleTimeString()}`
+                    : ''}
+                  {s.error ? ` · ${s.error}` : ''}
+                </span>
+              ))}
+            </section>
+          )}
           <div className="watchlist">
             <span className="watchlist-label">
               <Activity size={14} /> QUICK SELECT
@@ -845,460 +1246,523 @@ export default function App() {
             </IconButton>
           </div>
 
-          <div className="trading-layout">
-            <section
-              className={`chart-panel panel ${chartExpanded ? 'chart-expanded' : ''}`}
-              id="mobile-chart"
-              role={chartExpanded ? 'dialog' : undefined}
-              aria-modal={chartExpanded ? true : undefined}
-              aria-label={chartExpanded ? 'Expanded chart' : undefined}
-              ref={chartPanel}
-              style={{
-                minHeight:
-                  740 +
-                  chartWorkspace.oscillatorCount * 115 +
-                  activeComparisonCount * 110,
-              }}
+          <div
+            className={`trading-layout ${blind ? 'blind-workspace' : ''} ${panels.length ? 'multi-chart-layout' : ''}`}
+          >
+            <div
+              className={`chart-panel-grid chart-count-${panels.length + 1}`}
             >
-              {chartExpanded && (
-                <div className="chart-expanded-heading">
-                  <strong>
-                    {market.ticker} · {market.interval} · Chart
-                  </strong>
-                  <IconButton
-                    label="Exit fullscreen chart"
-                    onClick={() => setChartExpanded(false)}
-                  >
-                    <X size={20} />
-                  </IconButton>
-                </div>
-              )}
-              <div className="chart-toolbar">
-                <button className="symbol-picker" onClick={() => openData()}>
-                  <Search size={15} />
-                  <strong>{market.ticker}</strong>
-                  <ChevronDown size={13} />
-                </button>
-                <span className="toolbar-separator" />
-                <div className="interval-buttons">
-                  {[
-                    ['5m', '5m'],
-                    ['15m', '15m'],
-                    ['60m', '1h'],
-                    ['1d', '1D'],
-                    ['1wk', '1W'],
-                  ].map(([value, label]) => (
-                    <button
-                      key={value}
-                      className={market.interval === value ? 'selected' : ''}
-                      onClick={() => {
-                        if (value !== market.interval)
-                          openData(market.ticker, value);
-                      }}
+              <section
+                className={`chart-panel panel ${chartExpanded ? 'chart-expanded' : ''}`}
+                id="mobile-chart"
+                role={chartExpanded ? 'dialog' : undefined}
+                aria-modal={chartExpanded ? true : undefined}
+                aria-label={chartExpanded ? 'Expanded chart' : undefined}
+                ref={chartPanel}
+                style={{
+                  minHeight:
+                    740 +
+                    chartWorkspace.oscillatorCount * 115 +
+                    activeComparisonCount * 110,
+                }}
+              >
+                {chartExpanded && (
+                  <div className="chart-expanded-heading">
+                    <strong>
+                      {market.ticker} · {market.interval} · Chart
+                    </strong>
+                    <IconButton
+                      label="Exit fullscreen chart"
+                      onClick={() => setChartExpanded(false)}
                     >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  className="extra-interval"
-                  onClick={() => openData()}
-                  title="All intervals"
-                >
-                  <ChevronDown size={14} />
-                </button>
-                <span className="toolbar-separator" />
-                <IconButton
-                  label={
-                    chartType === 'candles'
-                      ? 'Switch to line chart'
-                      : 'Switch to candlestick chart'
-                  }
-                  onClick={() =>
-                    setChartType((value) =>
-                      value === 'candles' ? 'line' : 'candles',
-                    )
-                  }
-                  active={chartType === 'line'}
-                >
-                  {chartType === 'candles' ? (
-                    <CandlestickChart size={17} />
-                  ) : (
-                    <LineChart size={17} />
-                  )}
-                </IconButton>
-                <button
-                  className={`indicator-button ${chartWorkspace.indicators.length ? 'active' : ''}`}
-                  onClick={() => setDialog('indicators')}
-                  aria-label="Indicators"
-                  title="Add and manage technical indicators"
-                >
-                  <TrendingUp size={16} />
-                  <span>Indicators</span>
-                  {chartWorkspace.indicators.length > 0 && (
-                    <b>{chartWorkspace.indicators.length}</b>
-                  )}
-                </button>
-                <IconButton
-                  label="Toggle volume"
-                  active={showVolume}
-                  onClick={() => setShowVolume((value) => !value)}
-                >
-                  <BarChart3 size={17} />
-                </IconButton>
-                <button
-                  className={`indicator-button compare-button ${activeComparisonCount ? 'active' : ''}`}
-                  onClick={() => openComparison()}
-                  disabled={comparisons.every(
-                    (item) => item.ticker || item.loading,
-                  )}
-                  aria-label="Compare"
-                  title={
-                    activeComparisonCount >= 4
-                      ? 'Maximum 5 tickers: base plus 4 comparisons'
-                      : 'Compare with another ticker'
-                  }
-                >
-                  <Plus size={16} />
-                  <span>
-                    Compare
-                    {activeComparisonCount > 0
-                      ? ` (${activeComparisonCount + 1}/5)`
-                      : ''}
-                  </span>
-                </button>
-                <div className="toolbar-right">
-                  <span className="replay-label">
-                    <i /> REPLAY MODE
-                  </span>
-                  <IconButton
-                    label="Fullscreen chart"
-                    onClick={() => setChartExpanded((value) => !value)}
-                    active={chartExpanded}
+                      <X size={20} />
+                    </IconButton>
+                  </div>
+                )}
+                <div className="chart-toolbar">
+                  <button className="symbol-picker" onClick={() => openData()}>
+                    <Search size={15} />
+                    <strong>{market.ticker}</strong>
+                    <ChevronDown size={13} />
+                  </button>
+                  <span className="toolbar-separator" />
+                  <div className="interval-buttons">
+                    {[
+                      ['5m', '5m'],
+                      ['15m', '15m'],
+                      ['60m', '1h'],
+                      ['1d', '1D'],
+                      ['1wk', '1W'],
+                    ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        className={market.interval === value ? 'selected' : ''}
+                        onClick={() => {
+                          if (value !== market.interval)
+                            openData(market.ticker, value);
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    className="extra-interval"
+                    onClick={() => openData()}
+                    title="All intervals"
                   >
-                    <Expand size={16} />
+                    <ChevronDown size={14} />
+                  </button>
+                  <span className="toolbar-separator" />
+                  <IconButton
+                    label={
+                      chartType === 'candles'
+                        ? 'Switch to line chart'
+                        : 'Switch to candlestick chart'
+                    }
+                    onClick={() =>
+                      setChartType((value) =>
+                        value === 'candles' ? 'line' : 'candles',
+                      )
+                    }
+                    active={chartType === 'line'}
+                  >
+                    {chartType === 'candles' ? (
+                      <CandlestickChart size={17} />
+                    ) : (
+                      <LineChart size={17} />
+                    )}
                   </IconButton>
-                </div>
-              </div>
-
-              <div className="chart-heading">
-                <div className="instrument-logo">
-                  {market.ticker === 'BTC-USD'
-                    ? '₿'
-                    : market.ticker.slice(0, 1)}
-                </div>
-                <div>
-                  <h2>
-                    {market.name || market.ticker}
-                    <span>·</span>
-                    {market.interval.toUpperCase()}
-                    <span className="exchange-label">
-                      {market.exchange || 'Yahoo Finance'}
+                  <button
+                    className={`indicator-button ${chartWorkspace.indicators.length ? 'active' : ''}`}
+                    onClick={() => setDialog('indicators')}
+                    aria-label="Indicators"
+                    title="Add and manage technical indicators"
+                  >
+                    <TrendingUp size={16} />
+                    <span>Indicators</span>
+                    {chartWorkspace.indicators.length > 0 && (
+                      <b>{chartWorkspace.indicators.length}</b>
+                    )}
+                  </button>
+                  <IconButton
+                    label="Toggle volume"
+                    active={showVolume}
+                    onClick={() => setShowVolume((value) => !value)}
+                  >
+                    <BarChart3 size={17} />
+                  </IconButton>
+                  <button
+                    className={`indicator-button compare-button ${activeComparisonCount ? 'active' : ''}`}
+                    onClick={() => openComparison()}
+                    disabled={comparisons.every(
+                      (item) => item.ticker || item.loading,
+                    )}
+                    aria-label="Compare"
+                    title={
+                      activeComparisonCount >= 5
+                        ? 'Maximum 6 tickers: base plus 5 comparisons'
+                        : 'Compare with another ticker'
+                    }
+                  >
+                    <Plus size={16} />
+                    <span>
+                      Compare
+                      {activeComparisonCount > 0
+                        ? ` (${activeComparisonCount + 1}/6)`
+                        : ''}
                     </span>
-                  </h2>
-                  <div className="instrument-price">
-                    {quote(bar.close)}
-                    <span className={tone(change)}>
-                      {change >= 0 ? '+' : ''}
-                      {price(change)} (
-                      {((change / previousClose) * 100).toFixed(2)}%)
+                  </button>
+                  <div className="toolbar-right">
+                    <span className="replay-label">
+                      <i /> REPLAY MODE
                     </span>
+                    <IconButton
+                      label="Fullscreen chart"
+                      onClick={() => setChartExpanded((value) => !value)}
+                      active={chartExpanded}
+                    >
+                      <Expand size={16} />
+                    </IconButton>
                   </div>
                 </div>
-                <div
-                  className={`data-source ${market.source === 'demo' ? 'demo' : ''}`}
-                  title={
-                    market.source === 'demo'
-                      ? 'Synthetic sample prices, not historical Apple prices'
-                      : 'Adjusted historical prices via yfinance'
-                  }
-                >
-                  <i />
-                  {market.source === 'demo' ? 'SAMPLE DATA' : 'YAHOO FINANCE'}
-                </div>
-              </div>
-              <div className="ohlc-row">
-                <span>
-                  O <b>{price(displayBar.open)}</b>
-                </span>
-                <span>
-                  H <b>{price(displayBar.high)}</b>
-                </span>
-                <span>
-                  L <b>{price(displayBar.low)}</b>
-                </span>
-                <span>
-                  C{' '}
-                  <b
-                    className={
-                      displayBar.close >= displayBar.open
-                        ? 'positive'
-                        : 'negative'
-                    }
-                  >
-                    {price(displayBar.close)}
-                  </b>
-                </span>
-                <span className="volume-label">
-                  Vol{' '}
-                  <b>
-                    {Intl.NumberFormat('en-US', {
-                      notation: 'compact',
-                      maximumFractionDigits: 2,
-                    }).format(displayBar.volume)}
-                  </b>
-                </span>
-              </div>
-              {chartWorkspace.indicators.length > 0 && (
-                <div
-                  className="indicator-legend"
-                  aria-label="Active chart indicators"
-                >
-                  {chartWorkspace.indicators.map((instance) => {
-                    const definition = INDICATORS.find(
-                      (item) => item.id === instance.indicatorId,
-                    )!;
-                    return (
-                      <div
-                        className="indicator-chip"
-                        key={instance.id}
-                        style={{ color: instance.color }}
-                        data-testid="indicator-chip"
-                      >
-                        <button
-                          title={definition.description}
-                          onClick={() => setDialog('indicators')}
-                        >
-                          {definition.shortName}
-                          {definition.minPeriod !== definition.maxPeriod
-                            ? ` (${instance.period})`
-                            : ''}
-                        </button>
-                        <button
-                          aria-label={`Remove ${definition.name} (${instance.period})`}
-                          onClick={() =>
-                            chartWorkspace.setIndicators(
-                              chartWorkspace.indicators.filter(
-                                (item) => item.id !== instance.id,
-                              ),
-                            )
-                          }
-                        >
-                          <X size={11} />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              <ChartDisplayControls
-                settings={chartDisplay}
-                view={normalizedView}
-                market={market}
-                currentPrice={bar.close}
-              />
-              {comparisons.map((item, index) => (
-                <ComparisonControls
-                  key={index}
-                  base={market}
-                  comparison={item}
-                  result={
-                    normalizedView.comparisons[index] ?? {
-                      anchor: null,
-                      points: [],
-                      latest: null,
-                    }
-                  }
-                  currentTime={bar.time}
-                  onEdit={() => openComparison(index)}
-                  showError={dialog !== 'compare' || comparisonSlot !== index}
-                />
-              ))}
-              <DrawingToolbar
-                tool={drawingTool}
-                onTool={(tool) => {
-                  setDrawingTool(tool);
-                  setPlaying(false);
-                  setSelectedDrawingId(null);
-                }}
-                color={selectedDrawing?.color || drawingColor}
-                onColor={(color) => {
-                  setDrawingColor(color);
-                  if (selectedDrawing)
-                    chartWorkspace.changeDrawings(
-                      chartWorkspace.drawings.map((item) =>
-                        item.id === selectedDrawing.id
-                          ? { ...item, color }
-                          : item,
-                      ),
-                    );
-                }}
-                hasSelection={Boolean(selectedDrawing)}
-                hasDrawings={chartWorkspace.drawings.length > 0}
-                canUndo={chartWorkspace.canUndo}
-                canRedo={chartWorkspace.canRedo}
-                onUndo={() => {
-                  chartWorkspace.undo();
-                  setSelectedDrawingId(null);
-                }}
-                onRedo={chartWorkspace.redo}
-                onDelete={() => {
-                  chartWorkspace.changeDrawings(
-                    chartWorkspace.drawings.filter(
-                      (item) => item.id !== selectedDrawingId,
-                    ),
-                  );
-                  setSelectedDrawingId(null);
-                }}
-                onClear={() => {
-                  chartWorkspace.changeDrawings([]);
-                  setSelectedDrawingId(null);
-                }}
-              />
-              <MarketChart
-                bars={visibleBars}
-                orders={account.orders}
-                position={account.position}
-                showVolume={showVolume}
-                indicators={chartWorkspace.indicators}
-                chartType={chartType}
-                comparisons={chartComparisons}
-                display={normalizedView.display}
-                onCrosshair={setHoverBar}
-                drawingTool={drawingTool}
-                drawings={visibleDrawings}
-                onDrawingsChange={onDrawingsChange}
-                onDrawingToolComplete={() => setDrawingTool('cursor')}
-                drawingColor={drawingColor}
-                selectedDrawingId={selectedDrawingId}
-                onDrawingSelect={setSelectedDrawingId}
-              />
-              {!chartWorkspace.saved && (
-                <div className="chart-storage-note" role="status">
-                  Chart settings cannot be saved in this browser.
-                </div>
-              )}
-              <div className="chart-footer">
-                <span>
-                  <Crosshair size={12} />
-                  {formatDate(bar.time, intraday)}{' '}
-                  <span className="muted">UTC</span>
-                </span>
-                <span>
-                  {market.currency || 'Currency unavailable'}{' '}
-                  <span className="footer-divider">|</span>{' '}
-                  {market.source === 'demo'
-                    ? 'Synthetic demo'
-                    : 'Adjusted prices'}{' '}
-                  <span className="footer-divider">|</span>{' '}
-                  <a
-                    href="https://www.tradingview.com/"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Charts by TradingView
-                  </a>
-                </span>
-              </div>
 
-              <div className="replay-controls">
-                <div className="replay-control-top">
-                  <div className="replay-control-title">
-                    <span className="replay-icon">
-                      <History size={17} />
-                    </span>
-                    <div>
-                      <strong>Bar replay</strong>
-                      <span>
-                        {playing
-                          ? 'Playing through history'
-                          : cursor === market.bars.length - 1
-                            ? 'End of available history'
-                            : 'Your pace. Your decisions.'}
+                <div className="chart-heading">
+                  <div className="instrument-logo">
+                    {market.ticker === 'BTC-USD'
+                      ? '₿'
+                      : market.ticker.slice(0, 1)}
+                  </div>
+                  <div>
+                    <h2>
+                      {market.name || market.ticker}
+                      <span>·</span>
+                      {market.interval.toUpperCase()}
+                      <span className="exchange-label">
+                        {market.exchange || 'Yahoo Finance'}
+                      </span>
+                    </h2>
+                    <div className="instrument-price">
+                      {quote(currentPrice)}
+                      <span className={tone(change)}>
+                        {change >= 0 ? '+' : ''}
+                        {price(change)} (
+                        {((change / previousClose) * 100).toFixed(2)}%)
                       </span>
                     </div>
                   </div>
-                  <button
-                    className="replay-date"
-                    onClick={() => {
-                      setResetTarget(startCursor);
-                      setDialog('reset');
-                    }}
+                  <div
+                    className={`data-source ${market.source === 'demo' ? 'demo' : ''}`}
+                    title={
+                      market.source === 'demo'
+                        ? 'Synthetic sample prices, not historical Apple prices'
+                        : 'Adjusted historical prices via yfinance'
+                    }
                   >
-                    <Clock3 size={13} />
-                    {formatDate(bar.time, intraday)}
-                    <ChevronDown size={13} />
-                  </button>
-                  <div className="playback-buttons">
-                    <IconButton
-                      label="Restart replay"
+                    <i />
+                    {market.source === 'demo' ? 'SAMPLE DATA' : 'YAHOO FINANCE'}
+                  </div>
+                </div>
+                <div className="ohlc-row">
+                  <span>
+                    O <b>{price(displayBar.open)}</b>
+                  </span>
+                  <span>
+                    H <b>{price(displayBar.high)}</b>
+                  </span>
+                  <span>
+                    L <b>{price(displayBar.low)}</b>
+                  </span>
+                  <span>
+                    C{' '}
+                    <b
+                      className={
+                        displayBar.close >= displayBar.open
+                          ? 'positive'
+                          : 'negative'
+                      }
+                    >
+                      {price(displayBar.close)}
+                    </b>
+                  </span>
+                  <span className="volume-label">
+                    Vol{' '}
+                    <b>
+                      {Intl.NumberFormat('en-US', {
+                        notation: 'compact',
+                        maximumFractionDigits: 2,
+                      }).format(displayBar.volume)}
+                    </b>
+                  </span>
+                </div>
+                {chartWorkspace.indicators.length > 0 && (
+                  <div
+                    className="indicator-legend"
+                    aria-label="Active chart indicators"
+                  >
+                    {chartWorkspace.indicators.map((instance) => {
+                      const definition = INDICATORS.find(
+                        (item) => item.id === instance.indicatorId,
+                      )!;
+                      return (
+                        <div
+                          className="indicator-chip"
+                          key={instance.id}
+                          style={{ color: instance.color }}
+                          data-testid="indicator-chip"
+                        >
+                          <button
+                            title={definition.description}
+                            onClick={() => setDialog('indicators')}
+                          >
+                            {definition.shortName}
+                            {definition.minPeriod !== definition.maxPeriod
+                              ? ` (${instance.period})`
+                              : ''}
+                          </button>
+                          <button
+                            aria-label={`Remove ${definition.name} (${instance.period})`}
+                            onClick={() =>
+                              chartWorkspace.setIndicators(
+                                chartWorkspace.indicators.filter(
+                                  (item) => item.id !== instance.id,
+                                ),
+                              )
+                            }
+                          >
+                            <X size={11} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <ChartDisplayControls
+                  settings={chartDisplay}
+                  view={normalizedView}
+                  market={market}
+                  currentPrice={bar.close}
+                />
+                {comparisons.map((item, index) => (
+                  <ComparisonControls
+                    key={index}
+                    base={market}
+                    comparison={item}
+                    result={
+                      normalizedView.comparisons[index] ?? {
+                        anchor: null,
+                        points: [],
+                        latest: null,
+                      }
+                    }
+                    currentTime={bar.time}
+                    onEdit={() => openComparison(index)}
+                    showError={dialog !== 'compare' || comparisonSlot !== index}
+                  />
+                ))}
+                <DrawingToolbar
+                  tool={drawingTool}
+                  onTool={(tool) => {
+                    setDrawingTool(tool);
+                    setPlaying(false);
+                    setSelectedDrawingId(null);
+                  }}
+                  color={selectedDrawing?.color || drawingColor}
+                  onColor={(color) => {
+                    setDrawingColor(color);
+                    if (selectedDrawing)
+                      chartWorkspace.changeDrawings(
+                        chartWorkspace.drawings.map((item) =>
+                          item.id === selectedDrawing.id
+                            ? { ...item, color }
+                            : item,
+                        ),
+                      );
+                  }}
+                  hasSelection={Boolean(selectedDrawing)}
+                  hasDrawings={chartWorkspace.drawings.length > 0}
+                  canUndo={chartWorkspace.canUndo}
+                  canRedo={chartWorkspace.canRedo}
+                  onUndo={() => {
+                    chartWorkspace.undo();
+                    setSelectedDrawingId(null);
+                  }}
+                  onRedo={chartWorkspace.redo}
+                  onDelete={() => {
+                    chartWorkspace.changeDrawings(
+                      chartWorkspace.drawings.filter(
+                        (item) => item.id !== selectedDrawingId,
+                      ),
+                    );
+                    setSelectedDrawingId(null);
+                  }}
+                  onClear={() => {
+                    chartWorkspace.changeDrawings([]);
+                    setSelectedDrawingId(null);
+                  }}
+                />
+                <MarketChart
+                  onProtectionEdit={(stopLoss, takeProfit) => {
+                    try {
+                      tradingCommand({ type: 'bracket', stopLoss, takeProfit });
+                    } catch (error) {
+                      setNotice({
+                        text: (error as Error).message,
+                        error: true,
+                      });
+                    }
+                  }}
+                  blind={blind}
+                  syncGroup={panels.length ? 'workspace' : undefined}
+                  syncCrosshair={linked}
+                  syncViewport={linkedRange}
+                  bars={visibleBars}
+                  orders={account.orders}
+                  position={account.position}
+                  showVolume={showVolume}
+                  indicators={chartWorkspace.indicators}
+                  chartType={chartType}
+                  comparisons={chartComparisons}
+                  display={normalizedView.display}
+                  onCrosshair={setHoverBar}
+                  drawingTool={drawingTool}
+                  drawings={visibleDrawings}
+                  onDrawingsChange={onDrawingsChange}
+                  onDrawingToolComplete={() => setDrawingTool('cursor')}
+                  drawingColor={drawingColor}
+                  selectedDrawingId={selectedDrawingId}
+                  onDrawingSelect={setSelectedDrawingId}
+                />
+                {!chartWorkspace.saved && (
+                  <div className="chart-storage-note" role="status">
+                    Chart settings cannot be saved in this browser.
+                  </div>
+                )}
+                <div className="chart-footer">
+                  <span>
+                    <Crosshair size={12} />
+                    {formatDate(bar.time, intraday)}{' '}
+                    <span className="muted">UTC</span>
+                  </span>
+                  <span>
+                    {market.currency || 'Currency unavailable'}{' '}
+                    <span className="footer-divider">|</span>{' '}
+                    {market.source === 'demo'
+                      ? 'Synthetic demo'
+                      : 'Adjusted prices'}{' '}
+                    <span className="footer-divider">|</span>{' '}
+                    <a
+                      href="https://www.tradingview.com/"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Charts by TradingView
+                    </a>
+                  </span>
+                </div>
+
+                <div className="replay-controls">
+                  <div className="replay-control-top">
+                    <div className="replay-control-title">
+                      <span className="replay-icon">
+                        <History size={17} />
+                      </span>
+                      <div>
+                        <strong>Bar replay</strong>
+                        <span>
+                          {playing
+                            ? 'Playing through history'
+                            : cursor === market.bars.length - 1
+                              ? 'End of available history'
+                              : 'Your pace. Your decisions.'}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      className="replay-date"
+                      disabled={blind || live.active}
                       onClick={() => {
                         setResetTarget(startCursor);
                         setDialog('reset');
                       }}
                     >
-                      <RotateCcw size={16} />
-                    </IconButton>
-                    <button
-                      className={`play-button ${playing ? 'playing' : ''}`}
-                      aria-label={playing ? 'Pause replay' : 'Play replay'}
-                      title="Play / pause (Space)"
-                      disabled={cursor >= market.bars.length - 1}
-                      onClick={() => setPlaying((value) => !value)}
-                    >
-                      {playing ? (
-                        <Pause size={17} fill="currentColor" />
-                      ) : (
-                        <Play size={17} fill="currentColor" />
-                      )}
+                      <Clock3 size={13} />
+                      {formatDate(bar.time, intraday)}
+                      <ChevronDown size={13} />
                     </button>
-                    <IconButton
-                      label="Next candle"
-                      disabled={cursor >= market.bars.length - 1}
-                      onClick={() => {
-                        setPlaying(false);
-                        step();
-                      }}
-                    >
-                      <SkipForward size={17} />
-                    </IconButton>
-                    <select
-                      aria-label="Replay speed"
-                      className="speed-select"
-                      value={speed}
-                      onChange={(event) => setSpeed(Number(event.target.value))}
-                    >
-                      {[0.5, 1, 2, 5, 10].map((value) => (
-                        <option key={value} value={value}>
-                          {value}×
-                        </option>
-                      ))}
-                    </select>
+                    <div className="playback-buttons">
+                      <IconButton
+                        label="Restart replay"
+                        disabled={
+                          blind || live.active || session.mode === 'live'
+                        }
+                        onClick={() => {
+                          setResetTarget(startCursor);
+                          setDialog('reset');
+                        }}
+                      >
+                        <RotateCcw size={16} />
+                      </IconButton>
+                      <button
+                        className={`play-button ${playing ? 'playing' : ''}`}
+                        aria-label={playing ? 'Pause replay' : 'Play replay'}
+                        title="Play / pause (Space)"
+                        disabled={
+                          live.active ||
+                          session.mode === 'live' ||
+                          cursor >= market.bars.length - 1
+                        }
+                        onClick={() => setPlaying((value) => !value)}
+                      >
+                        {playing ? (
+                          <Pause size={17} fill="currentColor" />
+                        ) : (
+                          <Play size={17} fill="currentColor" />
+                        )}
+                      </button>
+                      <IconButton
+                        label="Next candle"
+                        disabled={
+                          live.active ||
+                          session.mode === 'live' ||
+                          cursor >= market.bars.length - 1
+                        }
+                        onClick={() => {
+                          setPlaying(false);
+                          step();
+                        }}
+                      >
+                        <SkipForward size={17} />
+                      </IconButton>
+                      <select
+                        aria-label="Replay speed"
+                        className="speed-select"
+                        value={speed}
+                        onChange={(event) =>
+                          setSpeed(Number(event.target.value))
+                        }
+                      >
+                        {[0.5, 1, 2, 5, 10].map((value) => (
+                          <option key={value} value={value}>
+                            {value}×
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="replay-progress">
+                    <span>{formatDate(market.bars[0].time)}</span>
+                    <input
+                      aria-label="Replay timeline"
+                      disabled={blind || live.active}
+                      type="range"
+                      min={blind ? startCursor : 0}
+                      max={blind ? session.blind!.end : market.bars.length - 1}
+                      value={cursor}
+                      style={
+                        {
+                          '--progress': `${(cursor / (market.bars.length - 1)) * 100}%`,
+                        } as React.CSSProperties
+                      }
+                      onChange={(event) => seek(Number(event.target.value))}
+                    />
+                    <span>
+                      {blind ? cursor - startCursor : cursor + 1}
+                      <span className="muted">
+                        {' '}
+                        /{' '}
+                        {blind
+                          ? session.blind!.end - startCursor
+                          : market.bars.length}{' '}
+                        bars
+                      </span>
+                    </span>
                   </div>
                 </div>
-                <div className="replay-progress">
-                  <span>{formatDate(market.bars[0].time)}</span>
-                  <input
-                    aria-label="Replay timeline"
-                    type="range"
-                    min={0}
-                    max={market.bars.length - 1}
-                    value={cursor}
-                    style={
-                      {
-                        '--progress': `${(cursor / (market.bars.length - 1)) * 100}%`,
-                      } as React.CSSProperties
-                    }
-                    onChange={(event) => seek(Number(event.target.value))}
-                  />
-                  <span>
-                    {cursor + 1}
-                    <span className="muted"> / {market.bars.length} bars</span>
-                  </span>
-                </div>
-              </div>
-            </section>
+              </section>
 
+              {panels.map((panel, index) => (
+                <AnalysisPanel
+                  key={panel.id}
+                  settings={panel}
+                  onChange={(updated) =>
+                    setPanels((previous) =>
+                      previous.map((p, i) => (i === index ? updated : p)),
+                    )
+                  }
+                  session={session}
+                  symbols={symbols}
+                  clock={
+                    bar.endTime ?? market.bars[cursor + 1]?.time ?? bar.time
+                  }
+                  liveStreams={live.active ? live.state?.streams : undefined}
+                  blind={blind}
+                  syncGroup="workspace"
+                  syncCrosshair={linked}
+                  syncViewport={linkedRange}
+                />
+              ))}
+            </div>
             <aside className="order-panel panel" id="mobile-trade">
               <div className="panel-title">
                 <h2>Order ticket</h2>
@@ -1310,10 +1774,65 @@ export default function App() {
                   <span>{market.name}</span>
                 </div>
                 <span className="order-market-price">
-                  {quote(bar.close)}
-                  <small>Replay price</small>
+                  {quote(currentPrice)}
+                  <small>
+                    {live.active ? 'Latest polled price' : 'Replay price'}
+                  </small>
                 </span>
               </div>
+              {account.position.quantity !== 0 && (
+                <details className="position-protection">
+                  <summary>Edit position protection</summary>
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      const data = new FormData(event.currentTarget);
+                      try {
+                        tradingCommand({
+                          type: 'bracket',
+                          stopLoss: data.get('stop')
+                            ? Number(data.get('stop'))
+                            : undefined,
+                          takeProfit: data.get('target')
+                            ? Number(data.get('target'))
+                            : undefined,
+                        });
+                      } catch (error) {
+                        setNotice({
+                          text: (error as Error).message,
+                          error: true,
+                        });
+                      }
+                    }}
+                  >
+                    <label>
+                      Stop price
+                      <input
+                        name="stop"
+                        aria-label="Position stop price"
+                        type="number"
+                        step="any"
+                        defaultValue={
+                          pending.find((o) => o.role === 'stopLoss')?.price
+                        }
+                      />
+                    </label>
+                    <label>
+                      Target price
+                      <input
+                        name="target"
+                        aria-label="Position target price"
+                        type="number"
+                        step="any"
+                        defaultValue={
+                          pending.find((o) => o.role === 'takeProfit')?.price
+                        }
+                      />
+                    </label>
+                    <button type="submit">Update protection</button>
+                  </form>
+                </details>
+              )}
               <form onSubmit={placeOrder}>
                 <div className="side-switch">
                   <button
@@ -1393,6 +1912,19 @@ export default function App() {
                     />
                   </>
                 )}
+                <RiskTicket
+                  entry={
+                    orderType === 'market' ? bar.close : Number(orderPrice)
+                  }
+                  side={side}
+                  equity={metrics.equity}
+                  buyingPower={metrics.buyingPower}
+                  config={account.config}
+                  quantity={Number(quantity)}
+                  ticker={market.ticker}
+                  onQuantity={setQuantity}
+                  onChange={setProtection}
+                />
                 <div className="order-estimate">
                   <div>
                     <span>Est. order value</span>
@@ -1429,9 +1961,11 @@ export default function App() {
                   <span>{orderType.toUpperCase()}</span>
                 </button>
                 <p className="execution-note">
-                  {orderType === 'market'
-                    ? 'Fills at this candle’s close, plus slippage.'
-                    : 'Eligible from the next candle. Gaps fill at the open.'}
+                  {live.active
+                    ? 'Queued for a newly completed candle. Provisional candles never fill orders.'
+                    : orderType === 'market'
+                      ? 'Fills at this candle’s close, plus slippage.'
+                      : 'Eligible from the next candle. Gaps fill at the open.'}
                 </p>
               </form>
               <div className="position-card">
@@ -1465,15 +1999,7 @@ export default function App() {
                     </div>
                     <button
                       className="close-position"
-                      onClick={() => {
-                        setSession((previous) => ({
-                          ...previous,
-                          account: closePosition(
-                            previous.account,
-                            previous.market.bars[previous.cursor],
-                          ),
-                        }));
-                      }}
+                      onClick={() => tradingCommand({ type: 'close' })}
                     >
                       Close position <X size={13} />
                     </button>
@@ -1694,13 +2220,10 @@ export default function App() {
                               <button
                                 className="cancel-order"
                                 onClick={() =>
-                                  setSession((previous) => ({
-                                    ...previous,
-                                    account: cancelOrder(
-                                      previous.account,
-                                      order.id,
-                                    ),
-                                  }))
+                                  tradingCommand({
+                                    type: 'cancel',
+                                    id: order.id,
+                                  })
                                 }
                               >
                                 Cancel <X size={12} />
@@ -1785,7 +2308,11 @@ export default function App() {
           aria-label={
             playing ? 'Pause from mobile toolbar' : 'Play from mobile toolbar'
           }
-          disabled={cursor >= market.bars.length - 1}
+          disabled={
+            live.active ||
+            session.mode === 'live' ||
+            cursor >= market.bars.length - 1
+          }
           onClick={() => setPlaying((value) => !value)}
         >
           {playing ? (
@@ -1798,7 +2325,11 @@ export default function App() {
         <button
           type="button"
           aria-label="Next candle from mobile toolbar"
-          disabled={cursor >= market.bars.length - 1}
+          disabled={
+            live.active ||
+            session.mode === 'live' ||
+            cursor >= market.bars.length - 1
+          }
           onClick={() => {
             setPlaying(false);
             step();
@@ -1867,7 +2398,7 @@ export default function App() {
               <>
                 <h2 id="dialog-title">Compare symbol</h2>
                 <p className="modal-description">
-                  Compare up to 5 tickers, including {market.ticker}, using the
+                  Compare up to 6 tickers, including {market.ticker}, using the
                   same {market.interval} candles and history.
                 </p>
                 <form
@@ -1876,6 +2407,22 @@ export default function App() {
                     setComparisonError('');
                     const symbol = benchmarkSymbol.trim().toUpperCase();
                     const generation = comparisonDialogRef.current;
+                    const occupied = new Set([
+                      market.ticker,
+                      ...panels.flatMap((p) => [p.ticker, ...p.comparisons]),
+                      ...comparisons
+                        .filter((_, i) => i !== comparisonSlot)
+                        .flatMap((c) => (c.ticker ? [c.ticker] : [])),
+                      ...[...comparisonLoadsRef.current.values()].map(
+                        (r) => r.ticker,
+                      ),
+                    ]);
+                    if (!occupied.has(symbol) && occupied.size >= 6) {
+                      setComparisonError(
+                        'The workspace supports six unique symbols. Remove a symbol from all panels first.',
+                      );
+                      return;
+                    }
                     if (
                       comparisons.some(
                         (item, index) =>

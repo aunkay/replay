@@ -32,8 +32,10 @@ import {
 import type { Drawing, DrawingTool } from '../lib/drawings';
 import {
   normalizationLabel,
+  normalizationValue,
   type NormalizationContext,
 } from '../lib/chartNormalization';
+import BracketHandles from './BracketHandles';
 import DrawingLayer from './DrawingLayer';
 import { ComparisonAxisLabel } from './ComparisonAxisLabel';
 
@@ -53,6 +55,11 @@ interface MarketChartProps {
   comparisons: ChartComparison[];
   display: NormalizationContext;
   chartType: 'candles' | 'line';
+  onProtectionEdit?: (stop?:number,target?:number)=>void;
+  blind?: boolean;
+  syncGroup?: string;
+  syncCrosshair?: boolean;
+  syncViewport?: boolean;
   onCrosshair?: (bar: Candle | null) => void;
   drawingTool: DrawingTool;
   drawings: Drawing[];
@@ -354,6 +361,11 @@ export default function MarketChart({
   display,
   chartType,
   onCrosshair,
+  onProtectionEdit,
+  blind = false,
+  syncGroup,
+  syncCrosshair = true,
+  syncViewport = true,
   drawingTool,
   drawings,
   onDrawingsChange,
@@ -989,6 +1001,102 @@ export default function MarketChart({
   }, [position.quantity, position.averagePrice]);
 
   useEffect(() => {
+    if (!ready) return;
+    ready.chart.applyOptions({
+      localization: {
+        timeFormatter: blind
+          ? (time: Time) =>
+              `Candle ${bars.findIndex((b) => b.time === time) + 1}`
+          : undefined,
+      },
+      timeScale: {
+        tickMarkFormatter: blind
+          ? (time: Time) => `${bars.findIndex((b) => b.time === time) + 1}`
+          : undefined,
+      },
+    });
+  }, [ready, blind, bars]);
+
+  useEffect(() => {
+    if (!ready || !syncGroup) return;
+    const source = containerRef.current;
+    let applying = false;
+    const crosshair = (event: MouseEventParams<Time>) => {
+      if (!applying && syncCrosshair)
+        window.dispatchEvent(
+          new CustomEvent('replay:chart-sync', {
+            detail: { group: syncGroup, source, time: event.time },
+          }),
+        );
+    };
+    const range = (range: IRange<Time> | null) => {
+      if (!applying && range && syncViewport)
+        window.dispatchEvent(
+          new CustomEvent('replay:range-sync', {
+            detail: { group: syncGroup, source, range },
+          }),
+        );
+    };
+    const receive = (event: Event) => {
+      const message = (event as CustomEvent).detail;
+      if (message.group !== syncGroup || message.source === source) return;
+      if(message.range&&!syncViewport || !message.range&&!syncCrosshair)return;
+      applying = true;
+      try {
+        if (message.range)
+          ready.chart.timeScale().setVisibleRange(message.range);
+        else if (message.time) {
+          const bar = barsByTimeRef.current.get(message.time);
+          const price =
+            bar && normalizationValue(bar.close, displayRef.current);
+          if (price !== null && price !== undefined)
+            ready.chart.setCrosshairPosition(
+              price,
+              message.time,
+              ready.candles,
+            );
+          else ready.chart.clearCrosshairPosition();
+        } else ready.chart.clearCrosshairPosition();
+      } finally {
+        applying = false;
+      }
+    };
+    ready.chart.subscribeCrosshairMove(crosshair);
+    ready.chart.timeScale().subscribeVisibleTimeRangeChange(range);
+    window.addEventListener('replay:chart-sync', receive);
+    window.addEventListener('replay:range-sync', receive);
+    return () => {
+      ready.chart.unsubscribeCrosshairMove(crosshair);
+      ready.chart.timeScale().unsubscribeVisibleTimeRangeChange(range);
+      window.removeEventListener('replay:chart-sync', receive);
+      window.removeEventListener('replay:range-sync', receive);
+    };
+  }, [ready, syncGroup, syncCrosshair, syncViewport]);
+
+  useEffect(() => {
+    if (!ready) return;
+    const series = chartType === 'candles' ? ready.candles : ready.line;
+    const lines = orders
+      .filter((o) => o.reduceOnly && o.status === 'pending')
+      .flatMap((o) => {
+        const price = normalizationValue(o.price!, display);
+        return !Number.isFinite(price)
+          ? []
+          : [
+              series.createPriceLine({
+                price,
+                color: o.role === 'stopLoss' ? '#ef6377' : '#35cda0',
+                lineWidth: 2,
+                lineStyle: LineStyle.Dashed,
+                axisLabelVisible: true,
+                title: o.role === 'stopLoss' ? 'STOP' : 'TARGET',
+              }),
+            ];
+      });
+    return () => lines.forEach((line) => series.removePriceLine(line));
+  }, [ready, orders, display, chartType]);
+
+  useEffect(() => {
     setVolumeTooltip(null);
   }, [bars, showVolume]);
 
@@ -1021,6 +1129,7 @@ export default function MarketChart({
         aria-label="Interactive historical price chart with executed trade markers"
         style={{ position: 'absolute', inset: 0 }}
       />
+      {ready && onProtectionEdit && orders.some(o=>o.reduceOnly&&o.status==='pending') && <BracketHandles chart={ready.chart} series={chartType==='candles'?ready.candles:ready.line} orders={orders} display={display} onChange={onProtectionEdit}/>}
       {showVolume && volumeTooltip && (
         <div
           role="tooltip"
@@ -1029,10 +1138,12 @@ export default function MarketChart({
           style={{ left: volumeTooltip.x, top: volumeTooltip.y }}
         >
           <time>
-            {new Date(volumeTooltip.bar.time * 1000)
-              .toISOString()
-              .replace('T', ' ')
-              .slice(0, 16)}{' '}
+            {blind
+              ? `Candle ${bars.findIndex((b) => b.time === volumeTooltip.bar.time) + 1}`
+              : new Date(volumeTooltip.bar.time * 1000)
+                  .toISOString()
+                  .replace('T', ' ')
+                  .slice(0, 16)}{' '}
             UTC
           </time>
           <strong>

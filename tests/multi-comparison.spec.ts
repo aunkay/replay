@@ -2,7 +2,7 @@ import type { Locator, Page } from '@playwright/test';
 import type { MarketData } from '../src/lib/data';
 import { expect, savedSession, test, yahooFixture } from './helpers/workspace';
 
-const symbols = ['SPY', 'QQQ', 'DIA', 'IWM'];
+const symbols = ['SPY', 'QQQ', 'DIA', 'IWM', 'TLT'];
 const rates: Record<string, number> = {
   SPY: 0.001,
   QQQ: 0.002,
@@ -56,7 +56,7 @@ async function add(
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }
 
-test('five tickers share every normalization, preserve base price, and persist independent edits', async ({
+test('six tickers share every normalization, preserve base price, and persist independent edits', async ({
   page,
   isMobile,
 }) => {
@@ -74,7 +74,7 @@ test('five tickers share every normalization, preserve base price, and persist i
     return route.fulfill({ json: fixture(initial.market, ticker) });
   });
   for (const ticker of symbols) await add(page, ticker, press);
-  await expect(chart(page)).toHaveAttribute('data-comparison-count', '4');
+  await expect(chart(page)).toHaveAttribute('data-comparison-count', '5');
   await expect(
     page.getByRole('button', { name: 'Compare', exact: true }),
   ).toBeDisabled();
@@ -84,7 +84,7 @@ test('five tickers share every normalization, preserve base price, and persist i
     .evaluateAll((elements) =>
       elements.map((element) => (element as HTMLInputElement).value),
     );
-  expect(new Set(colors).size).toBe(4);
+  expect(new Set(colors).size).toBe(5);
   const basePrice = initial.market.bars[initial.cursor].close;
   for (const mode of [
     'percent',
@@ -166,7 +166,7 @@ test('five tickers share every normalization, preserve base price, and persist i
     )
     .toBe(true);
   await page.reload();
-  await expect(chart(page)).toHaveAttribute('data-comparison-count', '4');
+  await expect(chart(page)).toHaveAttribute('data-comparison-count', '5');
   await expect(chart(page)).toHaveAttribute('data-chart-scale', 'log');
   await expect(
     row(page, 'QQQ').getByLabel('Benchmark color', { exact: true }),
@@ -178,7 +178,7 @@ test('five tickers share every normalization, preserve base price, and persist i
       exact: true,
     }),
   );
-  await expect(chart(page)).toHaveAttribute('data-comparison-count', '3');
+  await expect(chart(page)).toHaveAttribute('data-comparison-count', '4');
   await expect(
     page.getByRole('button', { name: 'Compare', exact: true }),
   ).toBeEnabled();
@@ -197,7 +197,7 @@ test('five tickers share every normalization, preserve base price, and persist i
   await press(
     page.getByRole('button', { name: 'Add comparison', exact: true }),
   );
-  await expect(chart(page)).toHaveAttribute('data-comparison-count', '4');
+  await expect(chart(page)).toHaveAttribute('data-comparison-count', '5');
   await expect(row(page, 'VTI')).toBeVisible();
   await expect
     .poll(() =>

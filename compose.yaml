@@ -1,7 +1,17 @@
 name: replay
 services:
   replay:
-    build: .
+    build:
+      context: .
+      target: runtime
+    environment:
+      REPLAY_ENGINE_URL: http://engine:8003
+      REPLAY_DATA_DIR: /data
+    volumes:
+      - replay-data:/data
+    depends_on:
+      engine:
+        condition: service_healthy
     restart: unless-stopped
     init: true
     ports:
@@ -15,3 +25,21 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  engine:
+    build:
+      context: .
+      target: engine
+    restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  replay-data:

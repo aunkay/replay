@@ -65,3 +65,10 @@ class FixtureTicker:
 
 main.yf.Ticker = FixtureTicker
 app = main.app
+
+@app.post('/api/test/reset-provider')
+def reset_provider():
+    from backend import provider
+    with provider._lock:
+        provider._until=0;provider._streak=0;provider._success=0
+    return {'reset': True}

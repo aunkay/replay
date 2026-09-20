@@ -31,6 +31,7 @@ export default defineConfig({
       testMatch: [
         '**/iphone.spec.ts',
         '**/volume.spec.ts',
+        '**/practice.spec.ts',
         '**/insecure-origin.spec.ts',
         '**/replay-follow.spec.ts',
         '**/comparison-price.spec.ts',
@@ -49,10 +50,21 @@ export default defineConfig({
     ? undefined
     : [
         {
+          name: 'Test engine',
+          command: 'npm run build:engine && node dist-engine/server.cjs',
+          url: 'http://127.0.0.1:8004/health',
+          env: { ENGINE_PORT: '8004' },
+          reuseExistingServer: false,
+        },
+        {
           name: 'Test API',
           command: `${python} -m uvicorn tests.support.api:app --host 127.0.0.1 --port 8002`,
           url: 'http://127.0.0.1:8002/api/health',
-          env: { REPLAY_E2E: '1' },
+          env: {
+            REPLAY_E2E: '1',
+            REPLAY_ENGINE_URL: 'http://127.0.0.1:8004',
+            REPLAY_DATA_DIR: `/tmp/replay-tests-${process.pid}`,
+          },
           reuseExistingServer: false,
           gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
           timeout: 30_000,

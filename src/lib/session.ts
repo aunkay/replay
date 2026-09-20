@@ -2,6 +2,8 @@ import { isValidMarketData, type MarketData } from './data';
 import type { TradingState } from './engine';
 
 export type StoredSession = {
+  mode?: 'replay'|'blind'|'live';
+  blind?: { seed: number; end: number; finished: boolean };
   market: MarketData;
   cursor: number;
   startCursor: number;
@@ -113,7 +115,7 @@ export function isValidSession(value: unknown): value is StoredSession {
       if (
         !accountTime(order.filledAt) ||
         order.filledAt < order.createdAt ||
-        (order.type !== 'market' && order.filledAt <= order.createdAt) ||
+        (order.type !== 'market' && !order.reduceOnly && order.filledAt <= order.createdAt) ||
         !positive(order.fillPrice) ||
         !nonnegative(order.fee)
       )

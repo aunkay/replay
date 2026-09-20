@@ -5,6 +5,7 @@ export interface MarketData {
   name: string;
   currency: string | null;
   exchange: string | null;
+  exchangeTimezone?: string;
   interval: string;
   source: 'yfinance' | 'demo';
   adjusted: boolean;

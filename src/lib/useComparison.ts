@@ -47,13 +47,14 @@ function restore(storageKey: string, color: string): Preferences {
   }
 }
 
-export function useComparison(base: MarketData, slot = 0) {
+export function useComparison(base: MarketData, slot = 0, liveMarkets?: MarketData[]) {
   const storageKey = slot === 0 ? STORAGE_KEY : `${STORAGE_KEY}:${slot + 1}`;
   const [preferences, setPreferences] = useState<Preferences>(() =>
-    restore(storageKey, ['#f0b86e', '#6db5f8', '#ed819f', '#6fd8d3'][slot]),
+    restore(storageKey, ['#f0b86e', '#6db5f8', '#ed819f', '#6fd8d3', '#e3c5ff'][slot]),
   );
   const [status, setStatus] = useState({ loading: false, error: '' });
   const [saved, setSaved] = useState(true);
+  useEffect(()=>{const reload=()=>setPreferences(restore(storageKey,['#f0b86e','#6db5f8','#ed819f','#6fd8d3','#e3c5ff'][slot]));window.addEventListener('replay:preferences-restored',reload);return ()=>window.removeEventListener('replay:preferences-restored',reload);},[storageKey,slot]);
   const key = marketComparisonKey(base);
   const keyRef = useRef(key);
   keyRef.current = key;
@@ -136,6 +137,7 @@ export function useComparison(base: MarketData, slot = 0) {
   );
 
   useEffect(() => {
+    if (liveMarkets) return cancel;
     // Reuse a validated snapshot only for this exact base dataset. A market or
     // interval change cancels older requests and refreshes the selected symbol.
     setStatus({ loading: false, error: '' });
@@ -147,7 +149,7 @@ export function useComparison(base: MarketData, slot = 0) {
       void load(preferences.ticker);
     }
     return cancel;
-  }, [key, load, cancel, preferences.ticker, preferences.cache, base.interval]);
+  }, [key, load, cancel, preferences.ticker, preferences.cache, base.interval, liveMarkets]);
 
   useEffect(() => {
     try {
@@ -162,7 +164,7 @@ export function useComparison(base: MarketData, slot = 0) {
     ...preferences,
     ...status,
     saved,
-    data:
+    data: liveMarkets ? liveMarkets.find(m=>m.ticker===preferences.ticker&&m.interval===base.interval)??null :
       preferences.cache?.baseKey === key &&
       preferences.cache.market.interval === base.interval
         ? preferences.cache.market
@@ -184,10 +186,11 @@ export function useComparison(base: MarketData, slot = 0) {
 }
 
 /** Four independent request/cache slots plus the traded base = five tickers. */
-export function useComparisons(base: MarketData) {
-  const first = useComparison(base, 0);
-  const second = useComparison(base, 1);
-  const third = useComparison(base, 2);
-  const fourth = useComparison(base, 3);
-  return [first, second, third, fourth];
+export function useComparisons(base: MarketData, liveMarkets?: MarketData[]) {
+  const first = useComparison(base, 0, liveMarkets);
+  const second = useComparison(base, 1, liveMarkets);
+  const third = useComparison(base, 2, liveMarkets);
+  const fourth = useComparison(base, 3, liveMarkets);
+  const fifth = useComparison(base, 4, liveMarkets);
+  return [first, second, third, fourth, fifth];
 }

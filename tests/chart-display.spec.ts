@@ -420,6 +420,7 @@ test('normalization and scale changes preserve open trades, indicators, and raw-
   await page
     .getByRole('button', { name: 'Horizontal line', exact: true })
     .click();
+  await page.getByTestId('drawing-surface').scrollIntoViewIfNeeded();
   const surface = await page.getByTestId('drawing-surface').boundingBox();
   await page.mouse.click(
     surface!.x + surface!.width * 0.4,

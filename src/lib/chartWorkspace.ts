@@ -54,6 +54,7 @@ export function useChartWorkspace(marketKey: string) {
     future: Drawing[][];
   }>({ key: marketKey, past: [], future: [] });
   const [saved, setSaved] = useState(true);
+  useEffect(()=>{const reload=()=>setPreferences(restore());window.addEventListener('replay:preferences-restored',reload);return ()=>window.removeEventListener('replay:preferences-restored',reload);},[]);
   const drawings = preferences.drawings[marketKey] || EMPTY;
   const currentHistory =
     history.key === marketKey

@@ -149,9 +149,10 @@ for (const [ticker, status, message] of [
       .click();
     const response = await responseEvent;
     expect(response.status()).toBe(status);
-    if (status === 429) expect(response.headers()['retry-after']).toBe('60');
+    if (status === 429) expect(Number(response.headers()['retry-after'])).toBeGreaterThanOrEqual(30);
     await expect(page.getByRole('alert')).toContainText(message);
     expect(await savedSession(page)).toEqual(before);
+    if(status===429) await page.request.post('/api/test/reset-provider');
     await page.getByLabel('Ticker symbol', { exact: true }).fill('AAPL');
     await page
       .getByRole('button', { name: 'Load & start replay', exact: true })

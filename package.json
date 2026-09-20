@@ -16,7 +16,9 @@
     "test:e2e:report": "playwright show-report",
     "test:e2e:types": "tsc -p tsconfig.e2e.json",
     "format": "prettier --write src tests *.ts *.json index.html",
-    "screenshots": "node scripts/screenshots.mjs"
+    "screenshots": "node scripts/screenshots.mjs",
+    "build:engine": "esbuild engine/server.ts --bundle --platform=node --format=cjs --outfile=dist-engine/server.cjs",
+    "engine": "npm run build:engine && node dist-engine/server.cjs"
   },
   "dependencies": {
     "lightweight-charts": "^5.0.0",

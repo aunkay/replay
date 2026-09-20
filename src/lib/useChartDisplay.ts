@@ -60,6 +60,7 @@ function restore(): Preferences {
 export function useChartDisplay() {
   const [preferences, setPreferences] = useState<Preferences>(restore);
   const [saved, setSaved] = useState(true);
+  useEffect(()=>{const reload=()=>setPreferences(restore());window.addEventListener('replay:preferences-restored',reload);return ()=>window.removeEventListener('replay:preferences-restored',reload);},[]);
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));

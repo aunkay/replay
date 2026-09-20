@@ -10,7 +10,11 @@ from backend import main
 
 
 @pytest.fixture(autouse=True)
-def clear_cache():
+def clear_cache(monkeypatch):
+    from backend import provider
+    monkeypatch.setenv("REPLAY_E2E", "1")
+    monkeypatch.setattr(provider, "_until", 0)
+    monkeypatch.setattr(provider, "_streak", 0)
     main._cache.clear()
     yield
     main._cache.clear()
@@ -47,7 +51,7 @@ def test_normalized_candles_and_cache(client, instrument):
     assert result["source"] == "yfinance"
     assert result["adjusted"] is True
     assert result["currency"] == "USD"
-    assert result["bars"][0] == {"time": 1735776000, "open": 100, "high": 104, "low": 99, "close": 102, "volume": 1000}
+    assert {k:v for k,v in result["bars"][0].items() if k not in {"endTime","complete"}} == {"time": 1735776000, "open": 100, "high": 104, "low": 99, "close": 102, "volume": 1000}
     ticker.history.assert_called_once_with(interval="1d", auto_adjust=True, actions=False, prepost=False, timeout=15, raise_errors=True, period="1y")
     assert client.get("/api/market-data").json() == result
     factory.assert_called_once_with("AAPL")
@@ -110,7 +114,7 @@ def test_rate_limit_is_actionable(client, instrument):
     instrument[0].history.side_effect = YFRateLimitError()
     response = client.get("/api/market-data")
     assert response.status_code == 429
-    assert response.headers["retry-after"] == "60"
+    assert 30 <= int(response.headers["retry-after"]) <= 37
 
 
 def test_bar_cleaning_drops_invalid_and_sorts_deduplicates():
