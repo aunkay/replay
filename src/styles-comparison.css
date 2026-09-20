@@ -1,0 +1,215 @@
+.benchmark-comparison {
+  margin: 0 12px 10px;
+  padding: 10px 12px;
+  border: 1px solid #36332e;
+  border-radius: 6px;
+  background: #19191b;
+  flex-shrink: 0;
+}
+.benchmark-topline,
+.benchmark-symbol,
+.benchmark-settings,
+.benchmark-performance {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.benchmark-topline {
+  justify-content: space-between;
+  gap: 10px;
+}
+.benchmark-symbol {
+  font-size: 11px;
+}
+.benchmark-symbol > span {
+  color: #8993a3;
+  font-size: 10px;
+}
+.benchmark-symbol input[type='color'] {
+  width: 18px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.benchmark-symbol input::-webkit-color-swatch {
+  border: 0;
+  border-radius: 3px;
+}
+.benchmark-settings {
+  gap: 6px;
+}
+.benchmark-settings label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #8993a3;
+  font-size: 9px;
+}
+.benchmark-settings select {
+  border: 1px solid #383c45;
+  background: #12151b;
+  border-radius: 4px;
+  padding: 5px;
+  color: #d4dbe7;
+  font-size: 10px;
+  max-width: 142px;
+}
+.benchmark-settings .icon-button {
+  width: 25px;
+  height: 25px;
+}
+.benchmark-performance {
+  margin-top: 8px;
+  gap: 16px;
+  font-size: 11px;
+}
+.benchmark-performance b {
+  margin-left: 5px;
+  font-variant-numeric: tabular-nums;
+}
+.benchmark-anchor {
+  color: #939cad;
+  font-size: 9px;
+}
+.benchmark-explanation {
+  margin-top: 6px;
+  color: #8993a3;
+  font-size: 9px;
+  line-height: 1.5;
+}
+.benchmark-error {
+  margin-top: 8px;
+  color: #edac88;
+  font-size: 10px;
+}
+.chart-display {
+  margin: 0 12px 10px;
+  padding: 9px 11px;
+  background: #131821;
+  border: 1px solid #293241;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.chart-panel:not(:fullscreen) {
+  height: auto;
+}
+.replay-controls {
+  flex-shrink: 0;
+}
+.chart-display-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chart-display-controls {
+  gap: 10px;
+}
+.chart-display-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 10px;
+  color: #98a5b7;
+}
+.chart-base-quote {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.chart-display-value b {
+  font-size: 12px;
+  color: #c9baff;
+  font-variant-numeric: tabular-nums;
+}
+.chart-display-description {
+  color: #8e9aab;
+  font-size: 9px;
+  line-height: 1.6;
+  margin-top: 6px;
+}
+.chart-display-notice {
+  margin-top: 6px;
+  font-size: 10px;
+  color: #e4c69a;
+  line-height: 1.5;
+}
+.chart-display-controls select:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+.normalization-window {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  color: #8e9aab;
+  font-size: 9px;
+}
+.normalization-window input {
+  width: 52px;
+  padding: 5px;
+  border: 1px solid #384454;
+  border-radius: 4px;
+  background: #0e131b;
+  font-size: 10px;
+}
+.normalization-window button {
+  padding: 5px 8px;
+  border-radius: 4px;
+  color: #c3afff;
+  border: 1px solid #50426b;
+  background: #231f30;
+}
+.chart-toolbar {
+  flex-wrap: wrap;
+  height: auto;
+  min-height: 46px;
+  row-gap: 3px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+@media (max-width: 700px) {
+  .benchmark-settings {
+    width: 100%;
+  }
+  .benchmark-settings label {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .benchmark-settings .icon-button {
+    align-self: flex-end;
+  }
+  .benchmark-comparison {
+    margin-left: 8px;
+    margin-right: 8px;
+    padding: 9px;
+  }
+  .benchmark-performance {
+    column-gap: 14px;
+    row-gap: 6px;
+  }
+  .benchmark-anchor {
+    flex-basis: 100%;
+  }
+  .chart-display {
+    margin-left: 8px;
+    margin-right: 8px;
+    padding: 9px;
+  }
+  .chart-display-controls {
+    gap: 7px;
+  }
+  .chart-display-controls select {
+    max-width: 136px;
+  }
+  .benchmark-topline > .benchmark-settings {
+    width: auto;
+  }
+}

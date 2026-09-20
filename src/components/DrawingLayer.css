@@ -1,0 +1,114 @@
+.drawing-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+  outline: none;
+  touch-action: auto;
+}
+.drawing-layer.drawing-active {
+  cursor: crosshair;
+  touch-action: none;
+}
+.drawing-layer [data-drawing-id] {
+  cursor: move;
+  outline: none;
+}
+.drawing-layer [data-drawing-id]:focus-visible {
+  filter: drop-shadow(0 0 3px #e2d9ff);
+}
+.drawing-layer .drawing-handle {
+  cursor: crosshair;
+  touch-action: none;
+}
+.drawing-layer.drawing-touch .drawing-hit-shape {
+  stroke-width: 44px;
+}
+.drawing-layer.drawing-touch .drawing-hit-shape,
+.drawing-layer.drawing-touch .drawing-hit-shape * {
+  pointer-events: none;
+}
+.drawing-instructions {
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  z-index: 4;
+  border: 1px solid #45405d;
+  border-radius: 5px;
+  color: #d1c6f7;
+  background: #171723ed;
+  font-size: 11px;
+  padding: 6px 9px;
+  pointer-events: none;
+}
+.drawing-text-editor {
+  position: absolute;
+  z-index: 5;
+  width: 230px;
+  padding: 9px;
+  border: 1px solid #8270c5;
+  border-radius: 7px;
+  background: #191e29;
+  box-shadow: 0 5px 20px #0006;
+}
+.drawing-text-editor input {
+  box-sizing: border-box;
+  width: 100%;
+  background: #101318;
+  border: 1px solid #414959;
+  border-radius: 4px;
+  color: #f1efff;
+  font: inherit;
+  font-size: 12px;
+  padding: 7px;
+}
+.drawing-text-editor > div {
+  display: flex;
+  gap: 7px;
+  margin-top: 8px;
+}
+.drawing-text-editor button {
+  border: 1px solid #554979;
+  border-radius: 4px;
+  background: #302944;
+  color: #e0d5ff;
+  padding: 5px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.drawing-text-editor button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.chart-touch-hint {
+  display: none;
+}
+@media (pointer: coarse) {
+  .chart-touch-hint {
+    display: block;
+    flex-shrink: 0;
+    margin: 0;
+    padding: 7px 10px;
+    border-bottom: 1px solid #222936;
+    background: #12161d;
+    color: #9ba7b7;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .drawing-text-editor input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  .drawing-text-editor button {
+    min-height: 44px;
+    flex: 1;
+    touch-action: manipulation;
+  }
+  .drawing-instructions {
+    max-width: calc(100% - 24px);
+    font-size: 11px;
+  }
+}
