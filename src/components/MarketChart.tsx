@@ -37,6 +37,7 @@ import {
 } from '../lib/chartNormalization';
 import BracketHandles from './BracketHandles';
 import {
+  followReplayRange,
   linkedEndingTime,
   linkedLogicalRange,
   READABLE_CANDLE_SPACING,
@@ -395,6 +396,7 @@ export default function MarketChart({
   syncClockRef.current = syncClock;
   const [ready, setReady] = useState<ChartInstance | null>(null);
   const [paneCount, setPaneCount] = useState(0);
+  const [following, setFollowing] = useState(true);
   const [volumeTooltip, setVolumeTooltip] = useState<{
     bar: Candle;
     x: number;
@@ -651,7 +653,7 @@ export default function MarketChart({
                   )
                 : 90),
           ),
-          to: bars.length + 6,
+          to: bars.length - 1 + CHART_RIGHT_PADDING,
         };
       } else if (bars.length > previous.length) {
         const delta =
@@ -1054,6 +1056,44 @@ export default function MarketChart({
   }, [ready, blind, bars]);
 
   useEffect(() => {
+    if (!ready) return;
+    const source = containerRef.current!;
+    let followFrame = 0;
+    const update = () => {
+      const range = ready.chart.timeScale().getVisibleLogicalRange();
+      if (!range || !previousBarsRef.current.length) return;
+      const gap = range.to - (previousBarsRef.current.length - 1);
+      source.dataset.logicalFrom = String(range.from);
+      source.dataset.logicalTo = String(range.to);
+      source.dataset.replayRightGap = String(gap);
+      setFollowing(gap >= -1);
+    };
+    const follow = () => {
+      if (syncGroup && syncPrimary) viewportOwners.set(syncGroup, source);
+      cancelAnimationFrame(followFrame);
+      followFrame = requestAnimationFrame(() => {
+        const range = followReplayRange(
+          previousBarsRef.current.length,
+          ready.chart.timeScale().getVisibleLogicalRange(),
+        );
+        if (range) {
+          pendingReplayRangeRef.current = null;
+          ready.chart.timeScale().setVisibleLogicalRange(range);
+        }
+      });
+    };
+    const initialFrame = requestAnimationFrame(update);
+    ready.chart.timeScale().subscribeVisibleLogicalRangeChange(update);
+    window.addEventListener('replay:follow', follow);
+    return () => {
+      cancelAnimationFrame(initialFrame);
+      cancelAnimationFrame(followFrame);
+      ready.chart.timeScale().unsubscribeVisibleLogicalRangeChange(update);
+      window.removeEventListener('replay:follow', follow);
+    };
+  }, [ready, bars, syncGroup, syncPrimary]);
+
+  useEffect(() => {
     if (!ready || !syncGroup) return;
     const source = containerRef.current!;
     if (syncPrimary) viewportOwners.set(syncGroup, source);
@@ -1264,6 +1304,16 @@ export default function MarketChart({
         aria-label="Interactive historical price chart with executed trade markers"
         style={{ position: 'absolute', inset: 0 }}
       />
+      <button
+        type="button"
+        className="chart-follow-latest"
+        aria-label="Follow latest candle"
+        aria-pressed={following}
+        title="Return all charts to the replay candle. Play also resumes following."
+        onClick={() => window.dispatchEvent(new Event('replay:follow'))}
+      >
+        {following ? 'Following replay' : 'Follow latest →'}
+      </button>
       {ready &&
         onProtectionEdit &&
         orders.some((o) => o.reduceOnly && o.status === 'pending') && (

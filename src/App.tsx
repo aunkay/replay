@@ -568,6 +568,10 @@ export default function App() {
   }, [live.active, session.blind, session.cursor, library.record]);
 
   useEffect(() => {
+    if (playing) window.dispatchEvent(new Event('replay:follow'));
+  }, [playing]);
+
+  useEffect(() => {
     if (!playing) return;
     if (cursor >= market.bars.length - 1) {
       setPlaying(false);

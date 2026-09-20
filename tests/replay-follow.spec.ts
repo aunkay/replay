@@ -185,3 +185,139 @@ for (const decorated of [false, true]) {
     );
   });
 }
+
+for (const multiple of [false, true]) {
+  test(`play resumes following with a stable right margin ${multiple ? 'across linked charts' : 'in one chart'}`, async ({
+    page,
+    isMobile,
+  }) => {
+    await page.goto('/');
+    if (multiple) await page.getByLabel('Chart panel count').selectOption('2');
+    const chart = page.locator('.market-chart').first();
+    const follow = chart.getByRole('button', {
+      name: 'Follow latest candle',
+      exact: true,
+    });
+    const gap = async () =>
+      Number(
+        await chart
+          .locator('.chart-canvas')
+          .getAttribute('data-replay-right-gap'),
+      );
+    const span = async () =>
+      chart
+        .locator('.chart-canvas')
+        .evaluate(
+          (e) =>
+            Number((e as HTMLElement).dataset.logicalTo) -
+            Number((e as HTMLElement).dataset.logicalFrom),
+        );
+    const pan = async () => {
+      const surface = chart.getByTestId('drawing-surface');
+      await surface.scrollIntoViewIfNeeded();
+      const box = (await surface.boundingBox())!;
+      const start = {
+        x: box.x + box.width * 0.3,
+        y: Math.max(50, box.y + box.height * 0.5),
+      };
+      if (!isMobile) {
+        await page.mouse.move(start.x, start.y);
+        await page.mouse.down();
+        await page.mouse.move(start.x + 120, start.y, { steps: 12 });
+        await page.mouse.up();
+      } else {
+        // WebKit DOM touch routing, matching the existing mobile pan coverage.
+        await page.evaluate(async (start) => {
+          const target = document.elementFromPoint(start.x, start.y)!;
+          const doc = document as any;
+          const emit = (type: string, x: number) => {
+            const touch = doc.createTouch(
+              window,
+              target,
+              77,
+              x + scrollX,
+              start.y + scrollY,
+              x,
+              start.y,
+            );
+            target.dispatchEvent(
+              new TouchEvent(type, {
+                bubbles: true,
+                cancelable: true,
+                touches: doc.createTouchList(
+                  ...(type === 'touchend' ? [] : [touch]),
+                ),
+                targetTouches: doc.createTouchList(
+                  ...(type === 'touchend' ? [] : [touch]),
+                ),
+                changedTouches: doc.createTouchList(touch),
+              }),
+            );
+          };
+          emit('touchstart', start.x);
+          for (let i = 1; i <= 12; i++) {
+            emit('touchmove', start.x + i * 10);
+            await new Promise((r) => setTimeout(r, 16));
+          }
+          emit('touchend', start.x + 120);
+        }, start);
+      }
+      await expect(follow).toHaveAttribute('aria-pressed', 'false');
+    };
+    await page
+      .getByRole('combobox', { name: 'Replay speed', exact: true })
+      .selectOption('10');
+    const play = () =>
+      page
+        .getByRole('button', {
+          name: isMobile ? 'Play from mobile toolbar' : 'Play replay',
+          exact: true,
+        })
+        .click();
+    const pause = () =>
+      page
+        .getByRole('button', {
+          name: isMobile ? 'Pause from mobile toolbar' : 'Pause replay',
+          exact: true,
+        })
+        .click();
+    await play();
+    const start = (await savedSession(page)).cursor;
+    await expect
+      .poll(async () => (await savedSession(page)).cursor)
+      .toBeGreaterThan(start + 2);
+    await pause();
+    await pan();
+    const zoom = await span();
+    const stopped = (await savedSession(page)).cursor;
+    await play();
+    await expect.poll(gap).toBeCloseTo(6, 2);
+    await expect
+      .poll(async () => (await savedSession(page)).cursor)
+      .toBeGreaterThan(stopped + 2);
+    if (!isMobile) {
+      const box = (await chart.boundingBox())!;
+      await page.mouse.move(
+        box.x + box.width * 0.6,
+        Math.max(30, box.y + box.height * 0.4),
+      );
+    }
+    await expect
+      .poll(async () => (await savedSession(page)).cursor)
+      .toBeGreaterThan(stopped + 5);
+    await expect.poll(gap).toBeCloseTo(6, 2);
+    await pause();
+    expect(await span()).toBeCloseTo(zoom, 1);
+    await pan();
+    const before = await savedSession(page);
+    await follow.click();
+    await expect.poll(gap).toBeCloseTo(6, 2);
+    expect(await savedSession(page)).toEqual(before);
+    for (const canvas of await page.locator('.chart-canvas').all())
+      await expect
+        .poll(async () =>
+          Number(await canvas.getAttribute('data-replay-right-gap')),
+        )
+        .toBeCloseTo(6, 2);
+  });
+}

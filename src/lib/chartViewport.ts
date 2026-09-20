@@ -53,3 +53,17 @@ export function linkedEndingTime(
 ) {
   return Math.max(time, (bar?.endTime ?? fallbackEnd ?? time + 1) - 1);
 }
+
+/** Reattach to replay without changing zoom, with a stable six-bar right margin. */
+export function followReplayRange(
+  count: number,
+  range: { from: number; to: number } | null,
+) {
+  if (count < 1) return null;
+  const span =
+    range && Number.isFinite(range.to - range.from) && range.to > range.from
+      ? range.to - range.from
+      : 90;
+  const to = count - 1 + CHART_RIGHT_PADDING;
+  return { from: to - span, to };
+}
