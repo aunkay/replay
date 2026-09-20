@@ -42,6 +42,14 @@ try {
   storageState = await context.storageState();
   await page.getByRole('button', { name: 'Indicators', exact: true }).click();
   await capture(page, 'replay-indicators.png');
+  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  await page.getByLabel('Chart panel count').selectOption('4');
+  await expect(page.locator('.analysis-panel .market-chart')).toHaveCount(3);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await capture(page, 'replay-four-charts.png', true);
+  await page.getByRole('button', { name: 'Practice & research', exact: true }).click();
+  await page.getByRole('button', { name: 'strategies', exact: true }).click();
+  await capture(page, 'replay-strategy-builder.png');
 } finally {
   await desktop.close();
 }

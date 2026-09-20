@@ -1,3 +1,5 @@
+For the server library, protected orders, journal, blind exercises, synchronized panels, visual strategies and Live mode, see the [practice and live guide](practice-and-live.md).
+
 # Replay · Market Lab
 
 A local web application for replaying historical candles, placing manual paper orders, and tracking trading performance. It combines React, TypeScript, and [TradingView Lightweight Charts](https://tradingview.github.io/lightweight-charts/) with a FastAPI service that retrieves Yahoo Finance prices through [yfinance](https://ranaroussi.github.io/yfinance/).
@@ -13,7 +15,7 @@ npm install
 ./scripts/dev.sh
 ```
 
-Open [http://localhost:5173](http://localhost:5173). The launcher starts the frontend on port 5173 and the API on port 8000. Ctrl+C stops both servers and their child processes. If either server exits, the other is stopped as well. The launcher is for Bash on Linux/macOS.
+Open [http://localhost:5173](http://localhost:5173). The launcher starts the frontend on port 5173, the API on port 8000 and the simulation engine on port 8003. Ctrl+C stops all three services and their child processes. If one service exits, the others are stopped as well. The launcher is for Bash on Linux/macOS.
 
 You can also run the two services in separate terminals:
 
@@ -65,9 +67,9 @@ The statistical window is recalculated during replay, so earlier chart values ar
 
 Display preferences survive reloads, base-market changes, and benchmark removal. **Reset chart display** returns to price/linear with a 50-candle window. Existing active benchmark scale preferences migrate to the shared chart controls. Trading, order prices, OHLC readouts, P&L, and drawing anchors retain original quote units; only the chart view changes. Price indicators follow the chart normalization, while oscillators and volume retain their own scales.
 
-### Compare up to five tickers
+### Compare up to six tickers
 
-Click **Compare** in the chart toolbar and enter `SPY`, `QQQ`, or another Yahoo Finance ticker. Click it again to add another comparison, up to **five tickers total: the base plus four comparisons**. The button shows the current count and disables at the limit; remove a comparison to free a slot. Duplicate symbols and the base symbol are rejected. Each comparison loads the base ticker's interval and history range and has its own line color, edit/remove controls, loading state, and error handling.
+Click **Compare** in the chart toolbar and enter `SPY`, `QQQ`, or another Yahoo Finance ticker. Click it again to add another comparison, up to **six tickers total: the base plus five comparisons**. The button shows the current count and disables at the limit; remove a comparison to free a slot. Duplicate symbols and the base symbol are rejected. Each comparison loads the base ticker's interval and history range and has its own line color, edit/remove controls, loading state, and error handling.
 
 Use the shared chart display controls above to normalize all tickers: price, percentage, indexed, ratio, log return, Z-score, and min–max are supported. Adding a first benchmark defaults to percentage comparison if you have not already chosen a display setting. Explicit choices, including base-only logarithmic mode, are preserved.
 

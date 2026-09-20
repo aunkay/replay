@@ -6,7 +6,7 @@ Install Docker Engine and the Docker Compose plugin. From the repository root:
 docker compose up -d --build --wait
 ```
 
-Open **http://localhost:8080** on the host, or **http://YOUR_PC_ADDRESS:8080** from another device on your network. The production image builds the frontend and serves it with the API from one origin. It runs as a non-root user and includes an API health check.
+Open **http://localhost:8080** on the host, or **http://YOUR_PC_ADDRESS:8080** from another device on your network. Compose starts the API/frontend service and a private Node simulation worker. The engine has no published host port. It runs as a non-root user and includes an API health check.
 
 The default binding allows access from your network. To restrict it to this PC or change ports, create an untracked `.env` file:
 
@@ -39,6 +39,17 @@ docker compose logs --tail=100
 curl http://localhost:8080/api/health
 ```
 
-Session data, paper trades, and chart settings live in browser storage, not the container. Rebuilding the container preserves those settings as long as you use the same browser and URL origin. Moving from development port 5173 to port 8080 starts a separate browser workspace. The server's market-data cache is temporary; no database volume is required.
+Server sessions, trades, journal screenshots and strategy runs live in SQLite in the `replay-data` volume mounted at `/data`. Normal container rebuilds preserve it. Do not use `docker compose down -v` unless you intend to delete this library. Unsaved browser workspaces still depend on the browser and URL origin; use **Import existing browser session** to move one into the library.
+
+Create a consistent backup while the app is running:
+
+```bash
+docker compose exec replay python -m backend.backup /data/backup.zip
+docker compose cp replay:/data/backup.zip ./replay-backup.zip
+```
+
+To restore on this deployment, first retain a current backup. Stop only Replay, extract `replay.sqlite` and the optional `provider-cooldown.json` from the chosen backup, then copy them into the stopped app container's `/data` directory. Remove old `replay.sqlite-wal` and `replay.sqlite-shm` files before replacement (with the app stopped). Start with `docker compose up -d --wait`. Keep restored files writable by UID/GID 10001. Alternatively use individual session ZIP import in the UI without stopping the app.
+
+Live polling always requires explicit activation after a restart; stored paper accounts can be resumed from the library. Yahoo cooldown state also survives restarts.
 
 The health check reports API availability. Restart policies handle process exits, but do not restart a still-running container merely because it becomes unhealthy.

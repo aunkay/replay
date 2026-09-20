@@ -18,12 +18,18 @@ A self-hosted market replay and paper trading app. Load historical prices, revea
 - **Volume inspection:** hover a candle or volume bar to see its exact volume and timestamp; tap or long-press to inspect on mobile.
 - **50 technical indicators:** searchable menu, multiple instances, configurable periods and colors, overlays and oscillator panes.
 - **12 drawing tools:** trendlines, rays, horizontal and vertical lines, Fibonacci tools, and more, with undo and redo.
-- **Compare up to five tickers:** one base instrument plus four comparison tickers, using the same interval. Keep the base price readout alongside normalized comparisons.
+- **Compare six tickers:** one base instrument plus five comparison tickers, using the same interval. Keep the base price readout alongside normalized comparisons.
 - **Flexible scales:** price, percentage, indexed-to-100, ratio, log return, z-score, and min–max normalization, plus logarithmic price spacing where applicable.
 - **Mobile layout:** touch controls, an iPhone 13 browser test suite, and a SwiftUI/WKWebView starter for a future self-hosted iOS app.
-- **Local persistence:** session and chart settings survive a reload in the same browser.
+- **Protected trades and risk sizing:** stop-loss/take-profit OCO brackets, draggable levels, fixed cash or percentage-equity risk budgets.
+- **Session library:** server-saved accounts and chart preferences, controller handoff between devices, ZIP import/export and browser-session migration.
+- **Trading journal and analytics:** notes, tags, setup names, chart screenshots, flat-to-flat trade statistics, R multiples, MAE/MFE and CSV exports.
+- **Blind exercises:** random fixed-length replay with hidden dates, saved seeds and explicit finish.
+- **Up to four synchronized charts:** independent intervals, indicators, drawings and comparisons; desktop grids and stacked phone panels.
+- **Visual strategies:** indicator-based rules, templates, worker-backed backtests and up to 500 parameter combinations with chronological training/test separation.
+- **Optional Live mode:** shared yfinance polling, provisional candles, a separate closed-bar paper account, spaced requests and exponential throttling backoff. Live always starts off.
 
-This is a manual replay/backtesting workspace. It does not execute Pine Script strategies or connect to a live broker.
+Strategies use the built-in visual rule builder. Replay does not execute Pine Script or connect to a live broker. Read the [practice and live guide](docs/practice-and-live.md) for execution rules and limits.
 
 ## Quick start
 
@@ -38,7 +44,7 @@ python3 -m venv .venv
 ./scripts/dev.sh
 ```
 
-Open **[http://localhost:5173](http://localhost:5173)**. The launcher starts the frontend and API together; Ctrl+C stops both. The initial synthetic demo is ready immediately. Loading real historical data requires an internet connection to Yahoo Finance.
+Open **[http://localhost:5173](http://localhost:5173)**. The launcher starts the frontend, API and strategy engine together; Ctrl+C stops all three. The initial synthetic demo is ready immediately. Loading real historical data requires an internet connection to Yahoo Finance.
 
 <details>
 <summary>Run the services separately (including Windows)</summary>
@@ -48,6 +54,9 @@ Create the virtual environment and install dependencies first. Run these command
 ```bash
 # API — Linux/macOS
 .venv/bin/python -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
+
+# Shared simulation engine — separate terminal
+npm run engine
 
 # Frontend
 npm run dev -- --port 5173 --strictPort
@@ -68,6 +77,12 @@ On Windows, use `python -m venv .venv`, then `.venv\Scripts\python.exe` in place
 Only revealed candles are available to the simulation. Seeking forward processes the intervening candles; rewinding or replacing the dataset resets the paper account. See the [user guide](docs/user-guide.md) for fill rules, fees, normalization formulas, indicators, and drawing tools.
 
 ## Screenshots
+
+### Multiple charts and visual strategies
+
+![Four synchronized chart panels](docs/images/replay-four-charts.png)
+
+![Visual strategy editor](docs/images/replay-strategy-builder.png)
 
 ### Indicator menu
 
@@ -98,12 +113,15 @@ Build the frontend, then start the backend to serve both the UI and API from one
 
 ```bash
 npm run build
+# Keep this running in a separate terminal:
+npm run engine
+
 .venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The `dist/` build must exist when the backend starts. For remote access, put this service behind an HTTPS reverse proxy. See the [hosting and iOS WebView guide](docs/ios-webview.md) for deployment details and the [SwiftUI starter](ios/ReplayApp.swift).
 
-The app has no built-in user authentication. Keep personal deployments private or add authentication at the reverse proxy. Browser storage is local to each device and origin; there is no account synchronization.
+The app has no built-in user authentication. Keep personal deployments private or add authentication at the reverse proxy. Save a session to the server library to resume it across devices. Unsaved browser workspaces remain local to their browser and origin. SQLite stores sessions, journal images and strategy runs in the persistent Docker volume. This is a shared library for a trusted user, not a multi-tenant service.
 
 ## Development and tests
 
