@@ -199,6 +199,24 @@ test('practice navigation keeps keyboard focus inside and fits every phone secti
     const nav = page.getByRole('button', { name: section, exact: true });
     await nav.click();
     await expect(nav).toHaveAttribute('aria-pressed', 'true');
+    const guide = page.getByRole('complementary', {
+      name: `${section} guide`,
+      exact: true,
+    });
+    await expect(
+      guide.getByRole('heading', {
+        name: `How to use ${section}`,
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(guide.getByRole('listitem')).toHaveCount(3);
+    await guide.getByText('Example & terms explained', { exact: true }).click();
+    await expect(guide.locator('dl')).toBeVisible();
+    await expect(guide.locator('.practice-guide-example')).toContainText(
+      'Example',
+    );
+    await guide.getByText('Example & terms explained', { exact: true }).click();
+    await expect(guide.locator('dl')).toBeHidden();
     expect(
       await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
     ).toBe(true);

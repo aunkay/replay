@@ -1087,3 +1087,124 @@
   overflow-y: scroll;
   scrollbar-gutter: stable;
 }
+
+.practice-guide {
+  margin: 0 0 24px;
+  padding: 18px;
+  border: 1px solid #625580;
+  border-radius: 10px;
+  background: linear-gradient(115deg, #211d32, #182330);
+}
+.practice-guide-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #c6b3ff;
+}
+.workspace-hub .practice-guide h3 {
+  font-size: 15px;
+  letter-spacing: 0;
+  margin: 0;
+}
+.workspace-hub .practice-guide > p {
+  color: #c0cadb;
+  margin: 12px 0 18px;
+}
+.practice-guide ol {
+  list-style: none;
+  counter-reset: guide-step;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.practice-guide li {
+  counter-increment: guide-step;
+  min-width: 0;
+}
+.practice-guide li:before {
+  content: counter(guide-step);
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  background: #b29aff24;
+  color: #cdbbff;
+  font-size: 11px;
+  margin-bottom: 9px;
+}
+.practice-guide li strong {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 6px;
+  color: #e0e7f2;
+}
+.practice-guide li span {
+  display: block;
+  font-size: 12px;
+  line-height: 1.65;
+  color: #aebbd0;
+}
+.practice-guide details {
+  margin-top: 16px;
+  border-top: 1px solid #594d723f;
+}
+.practice-guide summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding: 14px 0 0;
+  color: #c8b6fb;
+  font-size: 12px;
+}
+.workspace-hub .practice-guide-example {
+  padding: 12px;
+  margin: 12px 0;
+  border-radius: 6px;
+  background: #101722;
+  color: #bbc8da;
+}
+.practice-guide-example strong {
+  display: block;
+  color: #e0e7f2;
+  margin-bottom: 5px;
+}
+.practice-guide dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 16px 0 0;
+}
+.practice-guide dt {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e0e7f2;
+  margin-bottom: 5px;
+}
+.practice-guide dd {
+  margin: 0;
+  color: #aebbd0;
+  font-size: 12px;
+  line-height: 1.65;
+}
+@media (max-width: 760px) {
+  .practice-guide {
+    padding: 16px;
+  }
+  .practice-guide ol,
+  .practice-guide dl {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .practice-guide li {
+    position: relative;
+    padding-left: 32px;
+  }
+  .practice-guide li:before {
+    position: absolute;
+    left: 0;
+    top: 0;
+    margin: 0;
+  }
+}

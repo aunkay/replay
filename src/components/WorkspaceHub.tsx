@@ -6,6 +6,7 @@ import { analyzeTrades, closedTrades, equityAnalysis } from '../lib/analytics';
 import { exportCsv } from '../lib/data';
 import StrategyBuilder from './StrategyBuilder';
 import SessionLibrary from './SessionLibrary';
+import PracticeGuide from './PracticeGuide';
 import {
   FolderOpen,
   BookOpen,
@@ -477,6 +478,7 @@ export default function WorkspaceHub({
                 </div>
               </nav>
               <div className="hub-content" ref={content}>
+                <PracticeGuide key={tab} tab={tab} />
                 {(error || library.error) && (
                   <p role="alert">{error || library.error}</p>
                 )}

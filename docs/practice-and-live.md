@@ -2,6 +2,8 @@
 
 Open **Practice & research** above the chart to access Sessions, Trade journal, Performance, Blind practice and Strategy lab. On phones, all five sections stay visible in the navigation bar. The existing replay ticket, indicators, comparisons and drawing tools remain available on the main workspace.
 
+Each tab starts with a visible explanation and a three-step quick start. Expand **Example & terms explained** for a worked example and definitions of the controls and statistics in that tab.
+
 The workspace keeps navigation separate from the scrolling page. Each section explains its next step, and keyboard focus stays inside the dialog until you close it. Escape returns focus to the Practice & research button.
 
 ## Protected orders and position sizing
