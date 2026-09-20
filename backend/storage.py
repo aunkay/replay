@@ -9,6 +9,7 @@ import sqlite3
 import time
 import uuid
 import zipfile
+from threading import Lock
 from fastapi import APIRouter, Body, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 import httpx
@@ -20,20 +21,38 @@ def directory() -> Path:
     path.mkdir(parents=True,exist_ok=True)
     return path
 
+_database_init_lock = Lock()
+_initialized_databases = set()
+
+class DatabaseConnection(sqlite3.Connection):
+    def __exit__(self, *args):
+        try:
+            return super().__exit__(*args)
+        finally:
+            self.close()
+
 def db():
-    conn=sqlite3.connect(directory()/'replay.sqlite',timeout=15)
-    conn.row_factory=sqlite3.Row
-    conn.execute('PRAGMA journal_mode=WAL')
-    conn.executescript('''
-    CREATE TABLE IF NOT EXISTS schema_version(version INTEGER PRIMARY KEY);
-    INSERT OR IGNORE INTO schema_version VALUES(1);
-    CREATE TABLE IF NOT EXISTS sessions(id TEXT PRIMARY KEY,name TEXT NOT NULL,revision INTEGER NOT NULL,payload TEXT NOT NULL,updated REAL NOT NULL,archived INTEGER NOT NULL DEFAULT 0,fingerprint TEXT UNIQUE,controller TEXT,lease REAL DEFAULT 0);
-    CREATE TABLE IF NOT EXISTS commands(session_id TEXT,key TEXT,response TEXT,PRIMARY KEY(session_id,key));
-    CREATE TABLE IF NOT EXISTS journals(id TEXT PRIMARY KEY,session_id TEXT NOT NULL,trade_id TEXT NOT NULL,payload TEXT NOT NULL,updated REAL NOT NULL,UNIQUE(session_id,trade_id));
-    CREATE TABLE IF NOT EXISTS attachments(id TEXT PRIMARY KEY,session_id TEXT NOT NULL,mime TEXT NOT NULL,data BLOB NOT NULL);
-    CREATE TABLE IF NOT EXISTS strategies(id TEXT PRIMARY KEY,name TEXT NOT NULL,payload TEXT NOT NULL,updated REAL NOT NULL);
-    CREATE TABLE IF NOT EXISTS runs(id TEXT PRIMARY KEY,engine_id TEXT,payload TEXT NOT NULL,result TEXT,status TEXT,updated REAL);
-    ''')
+    path = (directory() / 'replay.sqlite').resolve()
+    with _database_init_lock:
+        initialize = path not in _initialized_databases or not path.exists()
+        conn = sqlite3.connect(path, timeout=15, factory=DatabaseConnection)
+        conn.row_factory = sqlite3.Row
+        if not initialize:
+            return conn
+        # Changing journal mode concurrently on a new database can fail before
+        # busy_timeout applies. Initialize once before accepting other readers.
+        conn.execute('PRAGMA journal_mode=WAL')
+        conn.executescript('''
+        CREATE TABLE IF NOT EXISTS schema_version(version INTEGER PRIMARY KEY);
+        INSERT OR IGNORE INTO schema_version VALUES(1);
+        CREATE TABLE IF NOT EXISTS sessions(id TEXT PRIMARY KEY,name TEXT NOT NULL,revision INTEGER NOT NULL,payload TEXT NOT NULL,updated REAL NOT NULL,archived INTEGER NOT NULL DEFAULT 0,fingerprint TEXT UNIQUE,controller TEXT,lease REAL DEFAULT 0);
+        CREATE TABLE IF NOT EXISTS commands(session_id TEXT,key TEXT,response TEXT,PRIMARY KEY(session_id,key));
+        CREATE TABLE IF NOT EXISTS journals(id TEXT PRIMARY KEY,session_id TEXT NOT NULL,trade_id TEXT NOT NULL,payload TEXT NOT NULL,updated REAL NOT NULL,UNIQUE(session_id,trade_id));
+        CREATE TABLE IF NOT EXISTS attachments(id TEXT PRIMARY KEY,session_id TEXT NOT NULL,mime TEXT NOT NULL,data BLOB NOT NULL);
+        CREATE TABLE IF NOT EXISTS strategies(id TEXT PRIMARY KEY,name TEXT NOT NULL,payload TEXT NOT NULL,updated REAL NOT NULL);
+        CREATE TABLE IF NOT EXISTS runs(id TEXT PRIMARY KEY,engine_id TEXT,payload TEXT NOT NULL,result TEXT,status TEXT,updated REAL);
+        ''')
+        _initialized_databases.add(path)
     return conn
 
 def engine(path: str, payload=None, method='POST'):
@@ -140,10 +159,11 @@ def delete_session(id:str):
 def journal(id:str):
     with db() as conn:
         get_record(conn,id)
-        return [dict(id=r['id'],tradeId=r['trade_id'],**json.loads(r['payload'])) for r in conn.execute('SELECT * FROM journals WHERE session_id=? ORDER BY updated DESC',(id,))]
+        return [{**json.loads(r['payload']), 'id':r['id'], 'tradeId':r['trade_id']} for r in conn.execute('SELECT * FROM journals WHERE session_id=? ORDER BY updated DESC',(id,))]
 
 @router.put('/sessions/{id}/journal/{trade}')
 def save_journal(id:str,trade:str,body:dict=Body(...)):
+    body={key:value for key,value in body.items() if key not in ['id','tradeId']}
     if len(json.dumps(body))>100000: raise HTTPException(413,'Journal entry is too large')
     with db() as conn:
         get_record(conn,id)

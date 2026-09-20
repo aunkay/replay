@@ -78,6 +78,12 @@ Only revealed candles are available to the simulation. Seeking forward processes
 
 ## Screenshots
 
+### Practice workspace
+
+![Session library with focused navigation and saved-session actions](docs/images/replay-practice.png)
+
+<img src="docs/images/replay-iphone-practice.png" width="300" alt="Practice workspace with all five sections available on iPhone">
+
 ### Multiple charts and visual strategies
 
 ![Four synchronized chart panels](docs/images/replay-four-charts.png)

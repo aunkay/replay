@@ -112,3 +112,25 @@ def test_live_stream_update_uses_put_and_cancellation_is_immediate(client,monkey
     assert cancelled.status_code==200
     assert live._sessions[id]['session']['cancelled'] is True
     assert live._sessions[id]['pending']==[]
+
+def test_simultaneous_library_reads_initialize_database_once(client):
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        responses=list(pool.map(lambda _:client.get('/api/strategies'),range(24)))
+    assert all(response.status_code==200 for response in responses)
+    connection=storage.db()
+    with connection:
+        assert connection.execute('PRAGMA journal_mode').fetchone()[0]=='wal'
+    with pytest.raises(Exception,match='closed database'):
+        connection.execute('SELECT 1')
+
+def test_journal_roundtrip_preserves_server_identity(client):
+    session=create(client)['id']
+    path=f'/api/sessions/{session}/journal/trade-1'
+    assert client.put(path,json={'notes':'First entry'}).status_code==200
+    note=client.get(f'/api/sessions/{session}/journal').json()[0]
+    note['notes']='Edited note'
+    assert client.put(path,json=note).status_code==200
+    assert client.get(f'/api/sessions/{session}/journal').json()[0]['notes']=='Edited note'
+    assert client.put(path,json={**note,'tradeId':'different-trade'}).status_code==200
+    assert client.get(f'/api/sessions/{session}/journal').json()[0]['tradeId']=='trade-1'

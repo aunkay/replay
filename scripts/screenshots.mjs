@@ -47,8 +47,12 @@ try {
   await expect(page.locator('.analysis-panel .market-chart')).toHaveCount(3);
   await page.evaluate(() => window.scrollTo(0, 0));
   await capture(page, 'replay-four-charts.png', true);
+  // Keep private server library entries out of public demo screenshots.
+  await page.route('**/api/sessions', route => route.fulfill({json:[]}));
   await page.getByRole('button', { name: 'Practice & research', exact: true }).click();
-  await page.getByRole('button', { name: 'strategies', exact: true }).click();
+  await expect(page.getByRole('heading', {name:'Your next session starts here'})).toBeVisible();
+  await capture(page, 'replay-practice.png');
+  await page.getByRole('button', { name: 'Strategy lab', exact: true }).click();
   await capture(page, 'replay-strategy-builder.png');
 } finally {
   await desktop.close();
@@ -71,6 +75,10 @@ try {
   await page.getByRole('button', { name: 'Go to order ticket', exact: true }).tap();
   await page.waitForTimeout(500);
   await capture(page, 'replay-iphone-trading.png');
+  await page.route('**/api/sessions', route => route.fulfill({json:[]}));
+  await page.getByRole('button', { name: 'Practice & research', exact: true }).click();
+  await expect(page.getByRole('heading', {name:'Your next session starts here'})).toBeVisible();
+  await capture(page, 'replay-iphone-practice.png');
 } finally {
   await mobile.close();
 }

@@ -1,6 +1,8 @@
 # Practice, research and live workspaces
 
-Open **Practice & research** above the chart to access Sessions, Journal, Analytics, Blind and Strategies. The existing replay ticket, indicators, comparisons and drawing tools remain available on the main workspace.
+Open **Practice & research** above the chart to access Sessions, Trade journal, Performance, Blind practice and Strategy lab. On phones, all five sections stay visible in the navigation bar. The existing replay ticket, indicators, comparisons and drawing tools remain available on the main workspace.
+
+The workspace keeps navigation separate from the scrolling page. Each section explains its next step, and keyboard focus stays inside the dialog until you close it. Escape returns focus to the Practice & research button.
 
 ## Protected orders and position sizing
 
@@ -12,13 +14,13 @@ Candle OHLC cannot reveal the path inside a candle. If both exits are touched, t
 
 ## Saved sessions and journal
 
-Save a named session to place it in the server library. Saved accounts and chart preferences are automatically updated. Search, resume, rename, duplicate, archive, delete or export a session. ZIP export includes its snapshot, notes and attached chart images; import creates a separate session. **Import existing browser session** migrates the current local workspace, with duplicate-import protection.
+Save a named session to place it in the server library. Saved accounts and chart preferences are automatically updated. Search active or archived sessions and use **Resume** to continue. Open the session’s **More actions** menu to rename, duplicate, archive, export or delete it. Renaming happens beside the selected session; deletion has an inline confirmation. Import controls are grouped under **Import & browser storage**. ZIP export includes its snapshot, notes and attached chart images; import creates a separate session. **Import existing browser session** migrates the current local workspace, with duplicate-import protection.
 
 One device controls a saved session at a time. Other devices can view it; **Take control** transfers control explicitly. Revision checks prevent stale writes, command IDs prevent duplicate trades, and server events update viewers. This is a trusted, shared deployment without individual user accounts.
 
-The journal groups trades from flat to flat. Add setup names, tags, entry/exit rationale and notes. Capture the current chart manually or enable automatic captures for new fills while the saved replay workspace is open. Images include visible chart layers and a ticker/time/mode caption; ZIP exports retain them. Journal metadata and trade statistics export as CSV.
+The journal groups trades from flat to flat. Expand a trade to add a setup name, tags, entry/exit reasoning and lessons. Saving notes displays confirmation; capturing a chart also saves your current draft. Capture the current chart manually or enable automatic captures for new fills while the saved replay workspace is open. Images include visible chart layers and a ticker/time/mode caption; ZIP exports retain them. Journal metadata and trade statistics export as CSV.
 
-Analytics includes net P&L, expectancy, profit factor, win rate, win/loss streaks, holding time, drawdown and duration, R multiples, and MAE/MFE. Partial closes and reversals allocate fees to their trade episodes. MAE/MFE are candle-based price excursions, not tick-level execution measurements. Group results by direction, setup, tags, weekday or hour; market timezone is used where available.
+Performance highlights closed-trade count, net P&L, win rate and profit factor. Expand **More statistics & drawdown** for expectancy, win/loss streaks, holding time and drawdown duration; the trade table includes R multiples and MAE/MFE. Partial closes and reversals allocate fees to their trade episodes. MAE/MFE are candle-based price excursions, not tick-level execution measurements. Group results by direction, setup, tags, weekday or hour; market timezone is used where available.
 
 ## Blind exercises
 
@@ -46,7 +48,7 @@ Visible clients renew a 60-second lease every 15 seconds. When every client disc
 
 ## Visual strategies and parameter searches
 
-Start from SMA crossover, RSI mean-reversion or Donchian breakout. Define long/short entry and exit rules with AND/OR conditions, price fields, constants and outputs from the 50 indicators. Operators include above, below, cross above and cross below. **Bars ago** permits prior-candle comparisons. Configure quantity or percentage risk, protection, fees and slippage.
+The Strategy lab separates setup into four expandable steps: starting point, entry/exit rules, position size/costs, and optional parameter search. Start from SMA crossover, RSI mean-reversion or Donchian breakout. Your draft stays in place when switching between practice sections. Define long/short entry and exit rules with AND/OR conditions, price fields, constants and outputs from the 50 indicators. Operators include above, below, cross above and cross below. **Bars ago** permits prior-candle comparisons. Configure quantity or percentage risk, protection, fees and slippage.
 
 Signals use completed candles and fill at the next open. Strategies use the same order/protection engine as manual replay, with one net position and no pyramiding. Opposing signals and ambiguous brackets have deterministic handling.
 

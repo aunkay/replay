@@ -56,7 +56,17 @@ function OperandEditor({
           }
         >
           {['open', 'high', 'low', 'close', 'volume'].map((v) => (
-            <option key={v}>{v}</option>
+            <option key={v} value={v}>
+              {{
+                stopPct: 'Stop-loss (%)',
+                targetPct: 'Take-profit (%)',
+                quantity: 'Fixed quantity',
+                'longEntry.conditions.0.left.period':
+                  'Long entry: first indicator period',
+                'longEntry.conditions.0.right.period':
+                  'Long entry: comparison indicator period',
+              }[v] ?? v}
+            </option>
           ))}
         </select>
       ) : (
@@ -225,6 +235,8 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
   const [strategy, setStrategy] = useState<Strategy>(defaultStrategy),
     [saved, setSaved] = useState<any[]>([]),
     [error, setError] = useState(''),
+    [feedback, setFeedback] = useState(''),
+    [busy, setBusy] = useState(false),
     [job, setJob] = useState(''),
     [result, setResult] = useState<any>(null),
     [history, setHistory] = useState<any[]>([]);
@@ -268,6 +280,8 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
     return () => clearInterval(timer);
   }, [job]);
   async function run() {
+    setBusy(true);
+    setFeedback('');
     try {
       setError('');
       const grids = optimize
@@ -295,6 +309,24 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
       setResult({ status: r.status });
     } catch (e) {
       setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function saveStrategy() {
+    setBusy(true);
+    setError('');
+    setFeedback('');
+    try {
+      await api('/strategies', { strategy });
+      await load();
+      setFeedback(
+        'Strategy saved. You can load it from the starting-point menu.',
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
     }
   }
   function template(name: string) {
@@ -353,215 +385,272 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
         Signals at candle close; fills at the next open. One position, no
         pyramiding. Results use the loaded historical snapshot.
       </p>
-      <div className="hub-actions">
-        <button onClick={() => template('sma')}>SMA crossover</button>
-        <button onClick={() => template('rsi')}>RSI threshold</button>
-        <button onClick={() => template('donchian')}>Donchian breakout</button>
-      </div>
-      <label>
-        Strategy name
-        <input
-          value={strategy.name}
-          onChange={(e) => setStrategy({ ...strategy, name: e.target.value })}
-        />
-      </label>
-      <select
-        aria-label="Saved strategy"
-        defaultValue=""
-        onChange={(e) => {
-          const s = saved.find((s) => s.id === e.target.value);
-          if (s) setStrategy(s.strategy);
-        }}
-      >
-        <option value="">Load saved strategy</option>
-        {saved.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.name}
-          </option>
-        ))}
-      </select>
-      {(['longEntry', 'shortEntry', 'longExit', 'shortExit'] as const).map(
-        (key) => (
-          <RuleEditor
-            key={key}
-            name={key.replace(/([A-Z])/g, ' $1')}
-            value={strategy[key]}
-            onChange={(v) => setStrategy({ ...strategy, [key]: v })}
-          />
-        ),
-      )}
-      <div className="hub-fields">
-        {(['quantity', 'riskPct', 'stopPct', 'targetPct'] as const).map(
-          (key) => (
-            <label key={key}>
-              {key}
-              <input
-                type="number"
-                min="0"
-                step="any"
-                value={strategy[key] ?? ''}
-                onChange={(e) =>
-                  setStrategy({
-                    ...strategy,
-                    [key]: e.target.value ? Number(e.target.value) : undefined,
-                  })
-                }
-              />
-            </label>
-          ),
-        )}
-        {(['initialCapital', 'commissionBps', 'slippageBps'] as const).map(
-          (key) => (
-            <label key={key}>
-              {key}
-              <input
-                type="number"
-                min="0"
-                step="any"
-                value={strategy.config[key]}
-                onChange={(e) =>
-                  setStrategy({
-                    ...strategy,
-                    config: {
-                      ...strategy.config,
-                      [key]: Number(e.target.value),
-                    },
-                  })
-                }
-              />
-            </label>
-          ),
-        )}
-      </div>
-      <label>
-        <input
-          type="checkbox"
-          checked={optimize}
-          onChange={(e) => setOptimize(e.target.checked)}
-        />{' '}
-        Parameter search with held-out test data
-      </label>
-      {optimize && (
-        <div className="hub-fields">
-          <label>
-            Parameter
-            <select value={path} onChange={(e) => setPath(e.target.value)}>
-              {[
-                'stopPct',
-                'targetPct',
-                'quantity',
-                'longEntry.conditions.0.left.period',
-                'longEntry.conditions.0.right.period',
-              ].map((v) => (
-                <option key={v}>{v}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Minimum
-            <input
-              type="number"
-              value={minimum}
-              onChange={(e) => setMinimum(Number(e.target.value))}
-            />
-          </label>
-          <label>
-            Maximum
-            <input
-              type="number"
-              value={maximum}
-              onChange={(e) => setMaximum(Number(e.target.value))}
-            />
-          </label>
-          <label>
-            Step
-            <input
-              type="number"
-              value={step}
-              onChange={(e) => setStep(Number(e.target.value))}
-            />
-          </label>
-          {additional.map((grid, index) => (
-            <fieldset key={index}>
-              <legend>Additional parameter {index + 1}</legend>
-              {(['path', 'minimum', 'maximum', 'step'] as const).map((key) => (
-                <label key={key}>
-                  {key}
-                  <input
-                    type={key === 'path' ? 'text' : 'number'}
-                    value={grid[key]}
-                    onChange={(e) =>
-                      setAdditional((previous) =>
-                        previous.map((g, i) =>
-                          i === index
-                            ? {
-                                ...g,
-                                [key]:
-                                  key === 'path'
-                                    ? e.target.value
-                                    : Number(e.target.value),
-                              }
-                            : g,
-                        ),
-                      )
-                    }
-                  />
-                </label>
-              ))}
-              <button
-                onClick={() =>
-                  setAdditional((previous) =>
-                    previous.filter((_, i) => i !== index),
-                  )
-                }
-              >
-                Remove parameter
-              </button>
-            </fieldset>
-          ))}
-          <button
-            onClick={() =>
-              setAdditional((previous) => [
-                ...previous,
-                { path: 'targetPct', minimum: 2, maximum: 6, step: 2 },
-              ])
-            }
-          >
-            Add parameter range
+      <details className="hub-disclosure" open>
+        <summary>1. Choose a starting point</summary>
+        <p>
+          Use a template, or load a strategy you saved earlier. Templates
+          replace the current rules.
+        </p>
+        <div className="hub-actions">
+          <button onClick={() => template('sma')}>SMA crossover</button>
+          <button onClick={() => template('rsi')}>RSI threshold</button>
+          <button onClick={() => template('donchian')}>
+            Donchian breakout
           </button>
-          <label>
-            Training %
-            <input
-              type="number"
-              min="50"
-              max="90"
-              value={split}
-              onChange={(e) => setSplit(Number(e.target.value))}
-            />
-          </label>
-          <p>
-            {[{ minimum, maximum, step }, ...additional].reduce(
-              (count, g) =>
-                count *
-                Math.max(0, Math.floor((g.maximum - g.minimum) / g.step) + 1),
-              1,
-            )}{' '}
-            combinations × {bars.length} candles. Ranking uses training net
-            profit only.
-          </p>
         </div>
-      )}
-      <div className="hub-actions">
-        <button
-          onClick={() =>
-            api('/strategies', { strategy })
-              .then(load)
-              .catch((e) => setError(e.message))
-          }
+        <label>
+          Strategy name
+          <input
+            value={strategy.name}
+            onChange={(e) => setStrategy({ ...strategy, name: e.target.value })}
+          />
+        </label>
+        <select
+          aria-label="Saved strategy"
+          defaultValue=""
+          onChange={(e) => {
+            const s = saved.find((s) => s.id === e.target.value);
+            if (s) setStrategy(s.strategy);
+          }}
         >
+          <option value="">Load saved strategy</option>
+          {saved.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+      </details>
+      <details className="hub-disclosure">
+        <summary>2. Entry & exit rules</summary>
+        <p>
+          Choose when to enter and exit. Empty rules do not generate a signal.
+        </p>
+        {(['longEntry', 'shortEntry', 'longExit', 'shortExit'] as const).map(
+          (key) => (
+            <RuleEditor
+              key={key}
+              name={key.replace(/([A-Z])/g, ' $1')}
+              value={strategy[key]}
+              onChange={(v) => setStrategy({ ...strategy, [key]: v })}
+            />
+          ),
+        )}
+      </details>
+      <details className="hub-disclosure">
+        <summary>3. Position size & costs</summary>
+        <p>
+          Risk sizing needs a stop-loss. Leave risk blank to use a fixed
+          quantity. Fees and slippage are in basis points: 10 bps = 0.1%.
+        </p>
+        <div className="hub-fields">
+          {(['quantity', 'riskPct', 'stopPct', 'targetPct'] as const).map(
+            (key) => (
+              <label key={key}>
+                {
+                  {
+                    quantity: 'Fixed quantity',
+                    riskPct: 'Equity risk (%)',
+                    stopPct: 'Stop-loss (%)',
+                    targetPct: 'Take-profit (%)',
+                    initialCapital: 'Starting capital',
+                    commissionBps: 'Commission (bps)',
+                    slippageBps: 'Slippage (bps)',
+                  }[key]
+                }
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={strategy[key] ?? ''}
+                  onChange={(e) =>
+                    setStrategy({
+                      ...strategy,
+                      [key]: e.target.value
+                        ? Number(e.target.value)
+                        : undefined,
+                    })
+                  }
+                />
+              </label>
+            ),
+          )}
+          {(['initialCapital', 'commissionBps', 'slippageBps'] as const).map(
+            (key) => (
+              <label key={key}>
+                {
+                  {
+                    quantity: 'Fixed quantity',
+                    riskPct: 'Equity risk (%)',
+                    stopPct: 'Stop-loss (%)',
+                    targetPct: 'Take-profit (%)',
+                    initialCapital: 'Starting capital',
+                    commissionBps: 'Commission (bps)',
+                    slippageBps: 'Slippage (bps)',
+                  }[key]
+                }
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={strategy.config[key]}
+                  onChange={(e) =>
+                    setStrategy({
+                      ...strategy,
+                      config: {
+                        ...strategy.config,
+                        [key]: Number(e.target.value),
+                      },
+                    })
+                  }
+                />
+              </label>
+            ),
+          )}
+        </div>
+      </details>
+      <details className="hub-disclosure">
+        <summary>4. Parameter search (optional)</summary>
+        <p>
+          Compare settings using training data, then evaluate the winner on
+          separate test data.
+        </p>
+        <label>
+          <input
+            type="checkbox"
+            checked={optimize}
+            onChange={(e) => setOptimize(e.target.checked)}
+          />{' '}
+          Parameter search with held-out test data
+        </label>
+        {optimize && (
+          <div className="hub-fields">
+            <label>
+              Parameter
+              <select value={path} onChange={(e) => setPath(e.target.value)}>
+                {[
+                  'stopPct',
+                  'targetPct',
+                  'quantity',
+                  'longEntry.conditions.0.left.period',
+                  'longEntry.conditions.0.right.period',
+                ].map((v) => (
+                  <option key={v} value={v}>
+                    {{
+                      stopPct: 'Stop-loss (%)',
+                      targetPct: 'Take-profit (%)',
+                      quantity: 'Fixed quantity',
+                      'longEntry.conditions.0.left.period':
+                        'Long entry: first indicator period',
+                      'longEntry.conditions.0.right.period':
+                        'Long entry: comparison indicator period',
+                    }[v] ?? v}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Minimum
+              <input
+                type="number"
+                value={minimum}
+                onChange={(e) => setMinimum(Number(e.target.value))}
+              />
+            </label>
+            <label>
+              Maximum
+              <input
+                type="number"
+                value={maximum}
+                onChange={(e) => setMaximum(Number(e.target.value))}
+              />
+            </label>
+            <label>
+              Step
+              <input
+                type="number"
+                value={step}
+                onChange={(e) => setStep(Number(e.target.value))}
+              />
+            </label>
+            {additional.map((grid, index) => (
+              <fieldset key={index}>
+                <legend>Additional parameter {index + 1}</legend>
+                {(['path', 'minimum', 'maximum', 'step'] as const).map(
+                  (key) => (
+                    <label key={key}>
+                      {key}
+                      <input
+                        type={key === 'path' ? 'text' : 'number'}
+                        value={grid[key]}
+                        onChange={(e) =>
+                          setAdditional((previous) =>
+                            previous.map((g, i) =>
+                              i === index
+                                ? {
+                                    ...g,
+                                    [key]:
+                                      key === 'path'
+                                        ? e.target.value
+                                        : Number(e.target.value),
+                                  }
+                                : g,
+                            ),
+                          )
+                        }
+                      />
+                    </label>
+                  ),
+                )}
+                <button
+                  onClick={() =>
+                    setAdditional((previous) =>
+                      previous.filter((_, i) => i !== index),
+                    )
+                  }
+                >
+                  Remove parameter
+                </button>
+              </fieldset>
+            ))}
+            <button
+              onClick={() =>
+                setAdditional((previous) => [
+                  ...previous,
+                  { path: 'targetPct', minimum: 2, maximum: 6, step: 2 },
+                ])
+              }
+            >
+              Add parameter range
+            </button>
+            <label>
+              Training %
+              <input
+                type="number"
+                min="50"
+                max="90"
+                value={split}
+                onChange={(e) => setSplit(Number(e.target.value))}
+              />
+            </label>
+            <p>
+              {[{ minimum, maximum, step }, ...additional].reduce(
+                (count, g) =>
+                  count *
+                  Math.max(0, Math.floor((g.maximum - g.minimum) / g.step) + 1),
+                1,
+              )}{' '}
+              combinations × {bars.length} candles. Ranking uses training net
+              profit only.
+            </p>
+          </div>
+        )}
+      </details>
+      <div className="hub-actions strategy-run-actions">
+        <button disabled={busy} onClick={saveStrategy}>
           Save strategy
         </button>
-        <button disabled={!!job} onClick={run}>
+        <button className="hub-primary" disabled={!!job || busy} onClick={run}>
           Run backtest
         </button>
         {job && (
@@ -580,6 +669,11 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
           </button>
         )}
       </div>
+      {feedback && (
+        <p className="hub-feedback success" role="status">
+          {feedback}
+        </p>
+      )}
       {error && <p role="alert">{error}</p>}
       {result && (
         <p role="status">
@@ -631,24 +725,31 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
             Export strategy trades CSV
           </button>
           {output?.candidates && (
-            <table>
-              <thead>
-                <tr>
-                  <th>Training rank</th>
-                  <th>Net P&amp;L</th>
-                  <th>Drawdown %</th>
-                </tr>
-              </thead>
-              <tbody>
-                {output.candidates.map((c: any, i: number) => (
-                  <tr key={i}>
-                    <td>{i + 1}</td>
-                    <td>{c.training.metrics.totalPnl.toFixed(2)}</td>
-                    <td>{c.training.metrics.maxDrawdown.toFixed(2)}</td>
+            <div
+              className="hub-table-scroll"
+              tabIndex={0}
+              role="region"
+              aria-label="Strategy results table"
+            >
+              <table>
+                <thead>
+                  <tr>
+                    <th>Training rank</th>
+                    <th>Net P&amp;L</th>
+                    <th>Drawdown %</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {output.candidates.map((c: any, i: number) => (
+                    <tr key={i}>
+                      <td>{i + 1}</td>
+                      <td>{c.training.metrics.totalPnl.toFixed(2)}</td>
+                      <td>{c.training.metrics.maxDrawdown.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
           <details>
             <summary>Trades and parameter results</summary>
@@ -656,70 +757,86 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
           </details>
         </>
       )}
-      <h4>Saved runs</h4>
-      <button
-        disabled={selectedRuns.length < 2}
-        onClick={() =>
-          Promise.all(
-            selectedRuns.map((id) =>
-              api(`/strategy-runs/${id}`).then((result) => ({ id, ...result })),
-            ),
-          )
-            .then(setComparison)
-            .catch((e) => setError(e.message))
-        }
-      >
-        Compare selected runs
-      </button>
-      {comparison.length > 0 && (
-        <table>
-          <thead>
-            <tr>
-              <th>Run</th>
-              <th>Net P&amp;L</th>
-              <th>Drawdown %</th>
-            </tr>
-          </thead>
-          <tbody>
-            {comparison.map((r) => {
-              const metrics = (r.result?.test ?? r.result)?.metrics;
-              return (
-                <tr key={r.id}>
-                  <td>{r.id.slice(0, 8)}</td>
-                  <td>{metrics?.totalPnl.toFixed(2) ?? r.status}</td>
-                  <td>{metrics?.maxDrawdown.toFixed(2) ?? '—'}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
-      {history.map((r) => (
-        <div key={r.id}>
-          <input
-            aria-label={`Select run ${r.id}`}
-            type="checkbox"
-            checked={selectedRuns.includes(r.id)}
-            onChange={(e) =>
-              setSelectedRuns((previous) =>
-                e.target.checked
-                  ? [...previous, r.id].slice(-4)
-                  : previous.filter((id) => id !== r.id),
-              )
-            }
-          />
-          <button
-            key={r.id}
-            onClick={() =>
-              api(`/strategy-runs/${r.id}`)
-                .then(setResult)
-                .catch((e) => setError(e.message))
-            }
+      <details className="hub-disclosure">
+        <summary>Saved runs & comparison ({history.length})</summary>
+        <p>
+          Select two to four runs to compare. Open a previous run to review its
+          results.
+        </p>
+        <button
+          disabled={selectedRuns.length < 2}
+          onClick={() =>
+            Promise.all(
+              selectedRuns.map((id) =>
+                api(`/strategy-runs/${id}`).then((result) => ({
+                  id,
+                  ...result,
+                })),
+              ),
+            )
+              .then(setComparison)
+              .catch((e) => setError(e.message))
+          }
+        >
+          Compare selected runs
+        </button>
+        {comparison.length > 0 && (
+          <div
+            className="hub-table-scroll"
+            tabIndex={0}
+            role="region"
+            aria-label="Strategy results table"
           >
-            {new Date(r.updated * 1000).toLocaleString()} · {r.status}
-          </button>
-        </div>
-      ))}
+            <table>
+              <thead>
+                <tr>
+                  <th>Run</th>
+                  <th>Net P&amp;L</th>
+                  <th>Drawdown %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparison.map((r) => {
+                  const metrics = (r.result?.test ?? r.result)?.metrics;
+                  return (
+                    <tr key={r.id}>
+                      <td>{r.id.slice(0, 8)}</td>
+                      <td>{metrics?.totalPnl.toFixed(2) ?? r.status}</td>
+                      <td>{metrics?.maxDrawdown.toFixed(2) ?? '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {history.map((r) => (
+          <div key={r.id}>
+            <input
+              aria-label={`Select run ${r.id}`}
+              type="checkbox"
+              checked={selectedRuns.includes(r.id)}
+              onChange={(e) =>
+                setSelectedRuns((previous) =>
+                  e.target.checked
+                    ? [...previous, r.id].slice(-4)
+                    : previous.filter((id) => id !== r.id),
+                )
+              }
+            />
+            <button
+              key={r.id}
+              onClick={() =>
+                api(`/strategy-runs/${r.id}`)
+                  .then(setResult)
+                  .catch((e) => setError(e.message))
+              }
+            >
+              {new Date(r.updated * 1000).toLocaleString()} · {r.status}
+            </button>
+          </div>
+        ))}
+      </details>
     </section>
   );
 }
