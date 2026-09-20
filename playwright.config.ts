@@ -30,6 +30,7 @@ export default defineConfig({
       name: 'iphone13-webkit',
       testMatch: [
         '**/iphone.spec.ts',
+        '**/volume.spec.ts',
         '**/insecure-origin.spec.ts',
         '**/replay-follow.spec.ts',
         '**/comparison-price.spec.ts',

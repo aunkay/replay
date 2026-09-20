@@ -301,3 +301,23 @@
     padding-right: 9px;
   }
 }
+
+.volume-tooltip {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  max-width: calc(100% - 16px);
+  padding: 9px 12px;
+  border: 1px solid #495368;
+  border-radius: 6px;
+  background: #171d27;
+  color: #e3e8f0;
+  box-shadow: 0 4px 16px #0006;
+  font-size: 12px;
+}
+.volume-tooltip time {
+  display: block;
+  margin-bottom: 4px;
+  color: #a2afc1;
+  font-size: 10px;
+}

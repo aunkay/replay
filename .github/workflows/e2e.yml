@@ -9,6 +9,22 @@ permissions:
   contents: read
 
 jobs:
+  docker-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start production container
+        run: docker compose up -d --build --wait --wait-timeout 90
+      - name: Check UI and API
+        run: |
+          curl --fail http://localhost:8080/ | grep 'id="root"'
+          curl --fail http://localhost:8080/api/health
+      - name: Container diagnostics and cleanup
+        if: always()
+        run: |
+          docker compose logs --tail=100
+          docker compose down
   browser-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 15

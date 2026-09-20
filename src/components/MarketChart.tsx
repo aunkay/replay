@@ -20,6 +20,7 @@ import {
   type PriceFormat,
   type SeriesMarker,
   type Time,
+  type MouseEventParams,
   type UTCTimestamp,
 } from 'lightweight-charts';
 import type { Candle, Order } from '../lib/engine';
@@ -365,6 +366,11 @@ export default function MarketChart({
   const instanceRef = useRef<ChartInstance | null>(null);
   const [ready, setReady] = useState<ChartInstance | null>(null);
   const [paneCount, setPaneCount] = useState(0);
+  const [volumeTooltip, setVolumeTooltip] = useState<{
+    bar: Candle;
+    x: number;
+    y: number;
+  } | null>(null);
   const [indicatorLabels, setIndicatorLabels] = useState<IndicatorLabel[]>([]);
   const [renderedComparisons, setRenderedComparisons] = useState<
     RenderedComparison[]
@@ -511,18 +517,37 @@ export default function MarketChart({
       }
     });
     resizeObserver.observe(containerRef.current);
-    const crosshairHandler = (event: { time?: Time }) => {
-      crosshairCallbackRef.current?.(
+    const crosshairHandler = (event: MouseEventParams<Time>) => {
+      const bar =
         typeof event.time === 'number'
           ? (barsByTimeRef.current.get(event.time) ?? null)
+          : null;
+      crosshairCallbackRef.current?.(bar);
+      const point = event.point;
+      setVolumeTooltip(
+        bar && point && event.paneIndex === 0
+          ? {
+              bar,
+              x: Math.max(
+                8,
+                Math.min(
+                  point.x + 12,
+                  (containerRef.current?.clientWidth ?? 220) - 210,
+                ),
+              ),
+              y: Math.max(8, point.y - 70),
+            }
           : null,
       );
     };
     chart.subscribeCrosshairMove(crosshairHandler);
+    // A tap also inspects volume without requiring the chart's long-press gesture.
+    chart.subscribeClick(crosshairHandler);
     return () => {
       coarsePointer.removeEventListener('change', updateTouchScrolling);
       resizeObserver.disconnect();
       chart.unsubscribeCrosshairMove(crosshairHandler);
+      chart.unsubscribeClick(crosshairHandler);
       candleMarkers.detach();
       lineMarkers.detach();
       chart.remove();
@@ -963,6 +988,10 @@ export default function MarketChart({
     }
   }, [position.quantity, position.averagePrice]);
 
+  useEffect(() => {
+    setVolumeTooltip(null);
+  }, [bars, showVolume]);
+
   return (
     <div
       className="market-chart"
@@ -992,6 +1021,28 @@ export default function MarketChart({
         aria-label="Interactive historical price chart with executed trade markers"
         style={{ position: 'absolute', inset: 0 }}
       />
+      {showVolume && volumeTooltip && (
+        <div
+          role="tooltip"
+          aria-label="Historical volume"
+          className="volume-tooltip"
+          style={{ left: volumeTooltip.x, top: volumeTooltip.y }}
+        >
+          <time>
+            {new Date(volumeTooltip.bar.time * 1000)
+              .toISOString()
+              .replace('T', ' ')
+              .slice(0, 16)}{' '}
+            UTC
+          </time>
+          <strong>
+            Volume:{' '}
+            {volumeTooltip.bar.volume.toLocaleString('en-US', {
+              maximumFractionDigits: 8,
+            })}
+          </strong>
+        </div>
+      )}
       {ready && ready === instanceRef.current && indicatorLabels.length > 0 && (
         <IndicatorLegends
           chart={ready.chart}

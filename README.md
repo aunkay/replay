@@ -15,6 +15,7 @@ A self-hosted market replay and paper trading app. Load historical prices, revea
 - **Candle replay:** play, pause, adjust speed, step, and seek. The chart follows the latest candle while you are at the right edge; browsing earlier history preserves your view.
 - **Paper trading:** market, limit, and stop orders; long and short positions; configurable capital, commissions, and slippage.
 - **Performance:** realized and unrealized P&L, equity, cash, exposure, returns, drawdown, order history, and CSV exports.
+- **Volume inspection:** hover a candle or volume bar to see its exact volume and timestamp; tap or long-press to inspect on mobile.
 - **50 technical indicators:** searchable menu, multiple instances, configurable periods and colors, overlays and oscillator panes.
 - **12 drawing tools:** trendlines, rays, horizontal and vertical lines, Fibonacci tools, and more, with undo and redo.
 - **Compare up to five tickers:** one base instrument plus four comparison tickers, using the same interval. Keep the base price readout alongside normalized comparisons.
@@ -82,6 +83,16 @@ Only revealed candles are available to the simulation. Seeking forward processes
 Captured from the running app in Chromium and iPhone 13 WebKit emulation. The native iOS starter has not been validated in Xcode or on a physical device.
 
 ## Self-hosting
+
+### Docker
+
+```bash
+docker compose up -d --build --wait
+```
+
+Open **http://localhost:8080**. The container uses an automatic restart policy; enable Docker at boot with `sudo systemctl enable --now docker` on Linux. See the [Docker deployment guide](docs/docker.md) for network access, updates, and startup behavior.
+
+### Without Docker
 
 Build the frontend, then start the backend to serve both the UI and API from one origin:
 
