@@ -454,3 +454,76 @@ test('session load errors offer a working retry', async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByRole('alert')).toHaveCount(0);
 });
+
+test('strategy catalog searches all templates, explains rules and compares historical metrics', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page
+    .getByRole('button', { name: 'Practice & research', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Strategy lab', exact: true }).click();
+  const templates = page.getByLabel('Strategy templates', { exact: true });
+  await expect(templates.getByRole('button')).toHaveCount(24);
+  await page
+    .getByLabel('Strategy category', { exact: true })
+    .selectOption('Volume');
+  await expect(templates.getByRole('button')).toHaveCount(2);
+  await page
+    .getByRole('button', { name: 'Chaikin money flow trend', exact: true })
+    .click();
+  await expect(page.getByLabel('Strategy name')).toHaveValue(
+    'Chaikin money flow trend',
+  );
+  await expect(
+    page.getByRole('article', { name: 'Selected template explanation' }),
+  ).toContainText('CMF(20) > 0');
+  await page
+    .getByLabel('Strategy category', { exact: true })
+    .selectOption('All');
+  await page
+    .getByLabel('Find a strategy', { exact: true })
+    .fill('nonexistent strategy');
+  await expect(templates.getByRole('button')).toHaveCount(0);
+  await expect(
+    page.getByText('No matches. Clear your search or choose All categories.'),
+  ).toBeVisible();
+  await page.getByLabel('Find a strategy', { exact: true }).fill('Connors');
+  await expect(templates.getByRole('button')).toHaveCount(1);
+  await page
+    .getByRole('button', { name: 'Connors RSI 4 pullback', exact: true })
+    .click();
+  await expect(page.getByRole('link', { name: /Connors RSI/ })).toHaveAttribute(
+    'href',
+    /reddit.com\/r\/algotrading/,
+  );
+  await page
+    .getByText('Historical quick tests · P&L, drawdown & Sharpe', {
+      exact: true,
+    })
+    .click();
+  const table = page.getByRole('region', {
+    name: 'Historical strategy comparison',
+  });
+  await expect(table.getByRole('row')).toHaveCount(26);
+  await expect(
+    table.getByRole('columnheader', { name: 'Sharpe', exact: true }),
+  ).toBeVisible();
+  await page.getByLabel('Research ticker', { exact: true }).selectOption('QQQ');
+  await page
+    .getByLabel('Research period', { exact: true })
+    .selectOption('Development');
+  await expect(table).toContainText('Buy and hold (95%)');
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+      ),
+    )
+    .toBe(true);
+  await page.getByRole('button', { name: 'Run backtest', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Backtest results', exact: true }),
+  ).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText(/Sharpe: UTC daily/)).toBeVisible();
+});

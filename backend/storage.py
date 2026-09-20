@@ -247,7 +247,7 @@ def save_strategy(body:dict=Body(...)):
 def start_run(body:dict=Body(...)):
     if not isinstance(body.get('bars'),list) or not 2<=len(body['bars'])<=100000: raise HTTPException(422,'Choose 2–100,000 candles')
     engine('/validate-strategy',body.get('strategy'))
-    body={**body,'engineVersion':'2','datasetHash':hashlib.sha256(json.dumps(body['bars'],sort_keys=True).encode()).hexdigest()}
+    body={**body,'engineVersion':'3','datasetHash':hashlib.sha256(json.dumps(body['bars'],sort_keys=True).encode()).hexdigest()}
     job=engine('/jobs',body);id=str(uuid.uuid4())
     with db() as conn: conn.execute('INSERT INTO runs VALUES(?,?,?,?,?,?)',(id,job['id'],json.dumps(body),None,job['status'],time.time()))
     # Persist completed results even when the browser closes during a run.

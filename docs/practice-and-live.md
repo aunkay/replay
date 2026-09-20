@@ -50,11 +50,13 @@ Visible clients renew a 60-second lease every 15 seconds. When every client disc
 
 ## Visual strategies and parameter searches
 
-The Strategy lab separates setup into four expandable steps: starting point, entry/exit rules, position size/costs, and optional parameter search. Start from SMA crossover, RSI mean-reversion or Donchian breakout. Your draft stays in place when switching between practice sections. Define long/short entry and exit rules with AND/OR conditions, price fields, constants and outputs from the 50 indicators. Operators include above, below, cross above and cross below. **Bars ago** permits prior-candle comparisons. Configure quantity or percentage risk, protection, fees and slippage.
+The Strategy lab separates setup into four expandable steps: starting point, entry/exit rules, position size/costs, and optional parameter search. Search 24 source-linked templates across trend, breakout, mean reversion, momentum and volume. Read each template’s rules and adaptation notes before loading it. Your draft stays in place when switching between practice sections. Define long/short entry and exit rules with AND/OR conditions, price fields, constants and outputs from the 50 indicators. Operators include above, below, cross above and cross below. **Bars ago** permits prior-candle comparisons. Configure fixed quantity, equity allocation or percentage risk, plus optional protection, fees and slippage. Equity allocation and risk sizing are mutually exclusive. Templates use 95% equity allocation and 5 bps commission plus 5 bps slippage per side by default.
 
 Signals use completed candles and fill at the next open. Strategies use the same order/protection engine as manual replay, with one net position and no pyramiding. Opposing signals and ambiguous brackets have deterministic handling.
 
 Backtests run in a worker, separate from the API's trading engine requests. Inputs are limited to 100,000 candles and parameter searches to 500 combinations. Add parameter paths with minimum, maximum and step. The default chronological split is 70% training / 30% test. Candidates are ranked on training results only; the chosen strategy starts a fresh account on the test segment, retaining earlier candles for indicator warmup. Review progress, cancel work, inspect candidate results, compare saved runs and export trades/results. Run snapshots retain strategy inputs, dataset hash and engine version. An interrupted worker is reported explicitly rather than silently rerun.
+
+Results show net P&L, maximum drawdown and annualized Sharpe. Open the historical quick-test table to compare all templates against buy-and-hold on three ETFs. These reference results are separate from the loaded chart. See [research sources, methodology and reproducible results](strategy-research.md).
 
 ## Operations
 

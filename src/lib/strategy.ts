@@ -11,6 +11,7 @@ import {
 import { INDICATORS, computeIndicator, type IndicatorId } from './indicators';
 import { analyzeTrades, closedTrades } from './analytics';
 import { sizeByRisk } from './risk';
+import { strategyPerformance } from './strategyPerformance';
 export type Operand = (
   | { kind: 'price'; field: 'open' | 'high' | 'low' | 'close' | 'volume' }
   | { kind: 'constant'; value: number }
@@ -31,6 +32,8 @@ export type Strategy = {
   shortExit: Rule;
   quantity: number;
   riskPct?: number;
+  allocationPct?: number;
+  tradingDaysPerYear?: number;
   stopPct?: number;
   targetPct?: number;
   config: EngineConfig;
@@ -41,6 +44,7 @@ export type StrategyResult = {
   trades: ReturnType<typeof closedTrades>;
   analytics: ReturnType<typeof analyzeTrades>;
   conflicts: number;
+  performance: ReturnType<typeof strategyPerformance>;
 };
 export function validateStrategy(strategy: Strategy) {
   if (!strategy || strategy.version !== 1 || typeof strategy.name !== 'string')
@@ -48,11 +52,23 @@ export function validateStrategy(strategy: Strategy) {
   createAccount(strategy.config);
   if (!Number.isFinite(strategy.quantity) || strategy.quantity <= 0)
     throw new Error('Quantity must be positive');
-  for (const field of ['riskPct', 'stopPct', 'targetPct'] as const) {
+  for (const field of [
+    'riskPct',
+    'stopPct',
+    'targetPct',
+    'allocationPct',
+  ] as const) {
     const v = strategy[field];
     if (v !== undefined && (!Number.isFinite(v) || v <= 0 || v >= 100))
       throw new Error(`${field} must be between zero and 100`);
   }
+  if (
+    strategy.tradingDaysPerYear !== undefined &&
+    ![252, 365].includes(strategy.tradingDaysPerYear)
+  )
+    throw new Error('Choose 252 or 365 trading days per year');
+  if (strategy.riskPct && strategy.allocationPct)
+    throw new Error('Choose either risk sizing or equity allocation');
   if (strategy.riskPct && !strategy.stopPct)
     throw new Error('Risk sizing requires a stop');
   for (const name of [
@@ -218,7 +234,19 @@ export function runStrategy(
         {
           side,
           type: 'market',
-          quantity: sizing?.quantity ?? strategy.quantity,
+          quantity:
+            sizing?.quantity ??
+            (strategy.allocationPct
+              ? Math.floor(
+                  ((Math.max(0, getMetrics(state, bar.open).equity) *
+                    strategy.allocationPct) /
+                    100 /
+                    (bar.open *
+                      (1 + state.config.slippageBps / 10000) *
+                      (1 + state.config.commissionBps / 10000))) *
+                    1e6,
+                ) / 1e6
+              : strategy.quantity),
           stopLoss,
           takeProfit,
           plannedRisk: sizing?.risk,
@@ -245,6 +273,10 @@ export function runStrategy(
     trades,
     analytics: analyzeTrades(trades),
     conflicts,
+    performance: strategyPerformance(
+      state.equityHistory,
+      strategy.tradingDaysPerYear,
+    ),
   };
 }
 export const emptyRule = (): Rule => ({ join: 'and', conditions: [] });

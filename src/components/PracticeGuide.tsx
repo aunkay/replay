@@ -177,7 +177,7 @@ const guides: Record<
     steps: [
       [
         'Start from a template',
-        'Open step 1 and choose SMA crossover, RSI threshold or Donchian breakout. Give the strategy a name. You can run a template before changing its rules.',
+        'Open step 1 and search the 24 templates by name or trading style. Read the buy/sell explanation and source links, then choose a template. Give the strategy a name. You can run a template before changing its rules.',
       ],
       [
         'Adjust rules and trading costs',
@@ -189,7 +189,7 @@ const guides: Record<
       ],
     ],
     example:
-      'Choose SMA crossover and Run backtest for a first run. Then change an indicator period under Entry & exit rules and run again. Compare the two saved runs rather than judging only the latest P&L.',
+      'Choose SMA crossover and Run backtest for a first run. Then change an indicator period under Entry & exit rules and run again. Compare P&L, maximum drawdown and Sharpe across saved runs. Open Historical quick tests for the separate three-ETF reference study.',
     terms: [
       [
         'Backtest fills',

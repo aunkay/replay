@@ -3,13 +3,9 @@ import { api } from '../lib/server';
 import EquityChart from './EquityChart';
 import { createDemo, exportCsv } from '../lib/data';
 import { INDICATORS, computeIndicator } from '../lib/indicators';
-import {
-  defaultStrategy,
-  emptyRule,
-  type Operand,
-  type Rule,
-  type Strategy,
-} from '../lib/strategy';
+import { type Operand, type Rule, type Strategy } from '../lib/strategy';
+import StrategyCatalog from './StrategyCatalog';
+import { STRATEGY_TEMPLATES } from '../lib/strategyTemplates';
 import type { Candle } from '../lib/engine';
 const previewBars = createDemo().bars;
 function OperandEditor({
@@ -61,6 +57,7 @@ function OperandEditor({
                 stopPct: 'Stop-loss (%)',
                 targetPct: 'Take-profit (%)',
                 quantity: 'Fixed quantity',
+                allocationPct: 'Equity allocation (%)',
                 'longEntry.conditions.0.left.period':
                   'Long entry: first indicator period',
                 'longEntry.conditions.0.right.period':
@@ -232,7 +229,9 @@ function RuleEditor({
   );
 }
 export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
-  const [strategy, setStrategy] = useState<Strategy>(defaultStrategy),
+  const [strategy, setStrategy] = useState<Strategy>(() =>
+      structuredClone(STRATEGY_TEMPLATES[0].strategy),
+    ),
     [saved, setSaved] = useState<any[]>([]),
     [error, setError] = useState(''),
     [feedback, setFeedback] = useState(''),
@@ -241,7 +240,7 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
     [result, setResult] = useState<any>(null),
     [history, setHistory] = useState<any[]>([]);
   const [optimize, setOptimize] = useState(false),
-    [path, setPath] = useState('stopPct'),
+    [path, setPath] = useState('allocationPct'),
     [minimum, setMinimum] = useState(1),
     [maximum, setMaximum] = useState(5),
     [step, setStep] = useState(1),
@@ -329,53 +328,6 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
       setBusy(false);
     }
   }
-  function template(name: string) {
-    const s = defaultStrategy();
-    if (name === 'rsi') {
-      s.name = 'RSI threshold';
-      s.longEntry = {
-        join: 'and',
-        conditions: [
-          {
-            left: { kind: 'indicator', indicator: 'rsi', period: 14 },
-            op: 'lt',
-            right: { kind: 'constant', value: 30 },
-          },
-        ],
-      };
-      s.longExit = {
-        join: 'and',
-        conditions: [
-          {
-            left: { kind: 'indicator', indicator: 'rsi', period: 14 },
-            op: 'gt',
-            right: { kind: 'constant', value: 70 },
-          },
-        ],
-      };
-    }
-    if (name === 'donchian') {
-      s.name = 'Donchian breakout';
-      s.longEntry = {
-        join: 'and',
-        conditions: [
-          {
-            left: { kind: 'price', field: 'close' },
-            op: 'crossUp',
-            right: {
-              kind: 'indicator',
-              indicator: 'donchian',
-              period: 20,
-              plot: 'upper',
-              offset: 1,
-            },
-          },
-        ],
-      };
-      s.longExit = emptyRule();
-    }
-    setStrategy(s);
-  }
   const output = result?.result;
   const summary = output?.test ?? output;
   return (
@@ -391,13 +343,12 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
           Use a template, or load a strategy you saved earlier. Templates
           replace the current rules.
         </p>
-        <div className="hub-actions">
-          <button onClick={() => template('sma')}>SMA crossover</button>
-          <button onClick={() => template('rsi')}>RSI threshold</button>
-          <button onClick={() => template('donchian')}>
-            Donchian breakout
-          </button>
-        </div>
+        <StrategyCatalog
+          onChoose={(s) => {
+            setStrategy(s);
+            setPath('allocationPct');
+          }}
+        />
         <label>
           Strategy name
           <input
@@ -440,47 +391,74 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
       <details className="hub-disclosure">
         <summary>3. Position size & costs</summary>
         <p>
-          Risk sizing needs a stop-loss. Leave risk blank to use a fixed
-          quantity. Fees and slippage are in basis points: 10 bps = 0.1%.
+          Choose equity allocation OR risk sizing (which needs a stop-loss).
+          Leave both blank to use fixed quantity. Fees and slippage are in basis
+          points: 10 bps = 0.1%.
+        </p>
+        <label>
+          Sharpe trading calendar
+          <select
+            aria-label="Sharpe trading calendar"
+            value={strategy.tradingDaysPerYear ?? 252}
+            onChange={(e) =>
+              setStrategy({
+                ...strategy,
+                tradingDaysPerYear: Number(e.target.value),
+              })
+            }
+          >
+            <option value={252}>Exchange markets · 252 days/year</option>
+            <option value={365}>Crypto / every day · 365 days/year</option>
+          </select>
+        </label>
+        <p>
+          Sharpe uses UTC daily equity marks, or native weekly/monthly marks for
+          coarse data. Less than two returns or zero variance shows N/A.
         </p>
         <div className="hub-fields">
-          {(['quantity', 'riskPct', 'stopPct', 'targetPct'] as const).map(
-            (key) => (
-              <label key={key}>
+          {(
+            [
+              'quantity',
+              'allocationPct',
+              'riskPct',
+              'stopPct',
+              'targetPct',
+            ] as const
+          ).map((key) => (
+            <label key={key}>
+              {
                 {
-                  {
-                    quantity: 'Fixed quantity',
-                    riskPct: 'Equity risk (%)',
-                    stopPct: 'Stop-loss (%)',
-                    targetPct: 'Take-profit (%)',
-                    initialCapital: 'Starting capital',
-                    commissionBps: 'Commission (bps)',
-                    slippageBps: 'Slippage (bps)',
-                  }[key]
+                  quantity: 'Fixed quantity',
+                  allocationPct: 'Equity allocation (%)',
+                  riskPct: 'Equity risk (%)',
+                  stopPct: 'Stop-loss (%)',
+                  targetPct: 'Take-profit (%)',
+                  initialCapital: 'Starting capital',
+                  commissionBps: 'Commission (bps)',
+                  slippageBps: 'Slippage (bps)',
+                }[key]
+              }
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={strategy[key] ?? ''}
+                onChange={(e) =>
+                  setStrategy({
+                    ...strategy,
+                    [key]: e.target.value ? Number(e.target.value) : undefined,
+                  })
                 }
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={strategy[key] ?? ''}
-                  onChange={(e) =>
-                    setStrategy({
-                      ...strategy,
-                      [key]: e.target.value
-                        ? Number(e.target.value)
-                        : undefined,
-                    })
-                  }
-                />
-              </label>
-            ),
-          )}
+              />
+            </label>
+          ))}
           {(['initialCapital', 'commissionBps', 'slippageBps'] as const).map(
             (key) => (
               <label key={key}>
                 {
                   {
                     quantity: 'Fixed quantity',
+                    allocationPct: 'Equity allocation (%)',
                     riskPct: 'Equity risk (%)',
                     stopPct: 'Stop-loss (%)',
                     targetPct: 'Take-profit (%)',
@@ -529,6 +507,7 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
               Parameter
               <select value={path} onChange={(e) => setPath(e.target.value)}>
                 {[
+                  'allocationPct',
                   'stopPct',
                   'targetPct',
                   'quantity',
@@ -540,6 +519,7 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
                       stopPct: 'Stop-loss (%)',
                       targetPct: 'Take-profit (%)',
                       quantity: 'Fixed quantity',
+                      allocationPct: 'Equity allocation (%)',
                       'longEntry.conditions.0.left.period':
                         'Long entry: first indicator period',
                       'longEntry.conditions.0.right.period':
@@ -688,8 +668,14 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
           <h4>{output?.test ? 'Held-out test results' : 'Backtest results'}</h4>
           <p>
             Net P&L {summary.metrics.totalPnl.toFixed(2)} · Drawdown{' '}
-            {summary.metrics.maxDrawdown.toFixed(2)}% · Trades{' '}
+            {summary.metrics.maxDrawdown.toFixed(2)}% · Sharpe{' '}
+            {summary.performance?.sharpe?.toFixed(2) ?? 'N/A'} · Trades{' '}
             {summary.trades.length} · Conflicting signals {summary.conflicts}
+          </p>
+          <p>
+            {summary.performance
+              ? `Sharpe: ${summary.performance.sampling}, ${summary.performance.periodsPerYear} periods/year, ${summary.performance.observations} returns, 0% risk-free rate.`
+              : 'Sharpe unavailable for older saved runs. Run again to calculate it.'}
           </p>
           <EquityChart
             points={summary.account.equityHistory}
@@ -737,6 +723,7 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
                     <th>Training rank</th>
                     <th>Net P&amp;L</th>
                     <th>Drawdown %</th>
+                    <th>Sharpe</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -745,6 +732,9 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
                       <td>{i + 1}</td>
                       <td>{c.training.metrics.totalPnl.toFixed(2)}</td>
                       <td>{c.training.metrics.maxDrawdown.toFixed(2)}</td>
+                      <td>
+                        {c.training.performance?.sharpe?.toFixed(2) ?? 'N/A'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -793,6 +783,7 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
                   <th>Run</th>
                   <th>Net P&amp;L</th>
                   <th>Drawdown %</th>
+                  <th>Sharpe</th>
                 </tr>
               </thead>
               <tbody>
@@ -803,6 +794,11 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
                       <td>{r.id.slice(0, 8)}</td>
                       <td>{metrics?.totalPnl.toFixed(2) ?? r.status}</td>
                       <td>{metrics?.maxDrawdown.toFixed(2) ?? '—'}</td>
+                      <td>
+                        {(
+                          r.result?.test ?? r.result
+                        )?.performance?.sharpe?.toFixed(2) ?? 'N/A'}
+                      </td>
                     </tr>
                   );
                 })}

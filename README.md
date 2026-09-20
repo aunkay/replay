@@ -26,7 +26,7 @@ A self-hosted market replay and paper trading app. Load historical prices, revea
 - **Trading journal and analytics:** notes, tags, setup names, chart screenshots, flat-to-flat trade statistics, R multiples, MAE/MFE and CSV exports.
 - **Blind exercises:** random fixed-length replay with hidden dates, saved seeds and explicit finish.
 - **Up to four synchronized charts:** independent intervals, indicators, drawings and comparisons; desktop grids and stacked phone panels.
-- **Visual strategies:** indicator-based rules, templates, worker-backed backtests and up to 500 parameter combinations with chronological training/test separation.
+- **Visual strategies:** 24 searchable, source-linked strategy templates, P&L/drawdown/Sharpe metrics, worker-backed backtests and up to 500 parameter combinations with chronological training/test separation.
 - **Optional Live mode:** shared yfinance polling, provisional candles, a separate closed-bar paper account, spaced requests and exponential throttling backoff. Live always starts off.
 
 Strategies use the built-in visual rule builder. Replay does not execute Pine Script or connect to a live broker. Read the [practice and live guide](docs/practice-and-live.md) for execution rules and limits.
@@ -89,6 +89,8 @@ Only revealed candles are available to the simulation. Seeking forward processes
 ![Four synchronized chart panels](docs/images/replay-four-charts.png)
 
 ![Visual strategy editor](docs/images/replay-strategy-builder.png)
+
+The strategy catalog includes a 150-run reference study across SPY, QQQ and GLD, with costs and buy-and-hold comparisons. See [strategy research, sources and reproducible results](docs/strategy-research.md). Templates are research starting points, not promises of profitability.
 
 ### Indicator menu
 

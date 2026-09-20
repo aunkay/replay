@@ -2899,3 +2899,36 @@ tr:hover td {
     scroll-behavior: auto !important;
   }
 }
+
+.strategy-template-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px;
+}
+.strategy-template-list button {
+  min-height: 44px;
+  white-space: normal;
+  text-align: left;
+}
+.strategy-template-list button[aria-pressed='true'] {
+  border-color: var(--accent, #47c5a3);
+  background: #163a34;
+}
+.strategy-template-guide {
+  margin-block: 12px;
+  padding: 12px;
+  border: 1px solid #334155;
+  border-radius: 8px;
+}
+.strategy-template-guide a {
+  display: block;
+  margin-block: 8px;
+  color: #7dd3fc;
+  overflow-wrap: anywhere;
+}
+.strategy-catalog {
+  min-width: 0;
+}

@@ -1,0 +1,3549 @@
+{
+  "generatedAt": "2026-09-20T22:19:50.877Z",
+  "engineVersion": "3",
+  "strategies": [
+    {
+      "id": "sma",
+      "strategy": {
+        "version": 1,
+        "name": "SMA crossover",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "sma",
+                "period": 20
+              },
+              "op": "crossUp",
+              "right": {
+                "kind": "indicator",
+                "indicator": "sma",
+                "period": 50
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "sma",
+                "period": 20
+              },
+              "op": "crossDown",
+              "right": {
+                "kind": "indicator",
+                "indicator": "sma",
+                "period": 50
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "averages"
+      ],
+      "adaptation": "Replay defines these exact thresholds and exits from the discussed indicator family; this is not a reproduction of a published performance claim."
+    },
+    {
+      "id": "rsi",
+      "strategy": {
+        "version": 1,
+        "name": "RSI threshold",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "rsi",
+                "period": 14
+              },
+              "op": "lt",
+              "right": {
+                "kind": "constant",
+                "value": 30
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "rsi",
+                "period": 14
+              },
+              "op": "gt",
+              "right": {
+                "kind": "constant",
+                "value": 70
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "rsi"
+      ],
+      "adaptation": "Replay defines these exact thresholds and exits from the discussed indicator family; this is not a reproduction of a published performance claim."
+    },
+    {
+      "id": "donchian",
+      "strategy": {
+        "version": 1,
+        "name": "Donchian breakout",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "price",
+                "field": "close"
+              },
+              "op": "gt",
+              "right": {
+                "kind": "indicator",
+                "indicator": "donchian",
+                "period": 20,
+                "plot": "upper",
+                "offset": 1
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "price",
+                "field": "close"
+              },
+              "op": "lt",
+              "right": {
+                "kind": "indicator",
+                "indicator": "donchian",
+                "period": 10,
+                "plot": "lower",
+                "offset": 1
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "donchian"
+      ],
+      "adaptation": "Simplified long-only channel system; no pyramiding, ATR sizing or Turtle skip rules. Channel levels exclude the signal candle."
+    },
+    {
+      "id": "sma200",
+      "strategy": {
+        "version": 1,
+        "name": "Price above SMA 200",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "price",
+                "field": "close"
+              },
+              "op": "gt",
+              "right": {
+                "kind": "indicator",
+                "indicator": "sma",
+                "period": 200
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "price",
+                "field": "close"
+              },
+              "op": "lt",
+              "right": {
+                "kind": "indicator",
+                "indicator": "sma",
+                "period": 200
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "averages"
+      ],
+      "adaptation": "Replay defines these exact thresholds and exits from the discussed indicator family; this is not a reproduction of a published performance claim."
+    },
+    {
+      "id": "ema",
+      "strategy": {
+        "version": 1,
+        "name": "EMA crossover",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "ema",
+                "period": 12
+              },
+              "op": "crossUp",
+              "right": {
+                "kind": "indicator",
+                "indicator": "ema",
+                "period": 26
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "ema",
+                "period": 12
+              },
+              "op": "crossDown",
+              "right": {
+                "kind": "indicator",
+                "indicator": "ema",
+                "period": 26
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "averages"
+      ],
+      "adaptation": "Replay defines these exact thresholds and exits from the discussed indicator family; this is not a reproduction of a published performance claim."
+    },
+    {
+      "id": "macd",
+      "strategy": {
+        "version": 1,
+        "name": "MACD signal crossover",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "macd",
+                "period": 12,
+                "plot": "main"
+              },
+              "op": "crossUp",
+              "right": {
+                "kind": "indicator",
+                "indicator": "macd",
+                "period": 12,
+                "plot": "signal"
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "macd",
+                "period": 12,
+                "plot": "main"
+              },
+              "op": "crossDown",
+              "right": {
+                "kind": "indicator",
+                "indicator": "macd",
+                "period": 12,
+                "plot": "signal"
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "macd"
+      ],
+      "adaptation": "Replay defines these exact thresholds and exits from the discussed indicator family; this is not a reproduction of a published performance claim."
+    },
+    {
+      "id": "adx",
+      "strategy": {
+        "version": 1,
+        "name": "ADX directional trend",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "adx",
+                "period": 14,
+                "plot": "adx"
+              },
+              "op": "gt",
+              "right": {
+                "kind": "constant",
+                "value": 25
+              }
+            },
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "adx",
+                "period": 14,
+                "plot": "plus-di"
+              },
+              "op": "crossUp",
+              "right": {
+                "kind": "indicator",
+                "indicator": "adx",
+                "period": 14,
+                "plot": "minus-di"
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "adx",
+                "period": 14,
+                "plot": "plus-di"
+              },
+              "op": "crossDown",
+              "right": {
+                "kind": "indicator",
+                "indicator": "adx",
+                "period": 14,
+                "plot": "minus-di"
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "adx"
+      ],
+      "adaptation": "Uses the post’s directional entry; replaces its ATR stop/target with a reverse-DI signal exit. Costs included."
+    },
+    {
+      "id": "ichimoku",
+      "strategy": {
+        "version": 1,
+        "name": "Ichimoku conversion / base",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "ichimoku",
+                "period": 9,
+                "plot": "conversion"
+              },
+              "op": "crossUp",
+              "right": {
+                "kind": "indicator",
+                "indicator": "ichimoku",
+                "period": 9,
+                "plot": "base"
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "ichimoku",
+                "period": 9,
+                "plot": "conversion"
+              },
+              "op": "crossDown",
+              "right": {
+                "kind": "indicator",
+                "indicator": "ichimoku",
+                "period": 9,
+                "plot": "base"
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "cloud"
+      ],
+      "adaptation": "Conversion/base crossover only; no projected cloud or lagging-span confirmation."
+    },
+    {
+      "id": "supertrend",
+      "strategy": {
+        "version": 1,
+        "name": "Supertrend reversal",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "price",
+                "field": "close"
+              },
+              "op": "crossUp",
+              "right": {
+                "kind": "indicator",
+                "indicator": "supertrend",
+                "period": 10
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "price",
+                "field": "close"
+              },
+              "op": "crossDown",
+              "right": {
+                "kind": "indicator",
+                "indicator": "supertrend",
+                "period": 10
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "supertrend"
+      ],
+      "adaptation": "Replay defines these exact thresholds and exits from the discussed indicator family; this is not a reproduction of a published performance claim."
+    },
+    {
+      "id": "psar",
+      "strategy": {
+        "version": 1,
+        "name": "Parabolic SAR reversal",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "price",
+                "field": "close"
+              },
+              "op": "crossUp",
+              "right": {
+                "kind": "indicator",
+                "indicator": "psar",
+                "period": 1
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "price",
+                "field": "close"
+              },
+              "op": "crossDown",
+              "right": {
+                "kind": "indicator",
+                "indicator": "psar",
+                "period": 1
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "indicators"
+      ],
+      "adaptation": "Replay defines these exact thresholds and exits from the discussed indicator family; this is not a reproduction of a published performance claim."
+    },
+    {
+      "id": "bb-breakout",
+      "strategy": {
+        "version": 1,
+        "name": "Bollinger momentum breakout",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "price",
+                "field": "close"
+              },
+              "op": "crossUp",
+              "right": {
+                "kind": "indicator",
+                "indicator": "bbands",
+                "period": 20,
+                "plot": "upper"
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "price",
+                "field": "close"
+              },
+              "op": "lt",
+              "right": {
+                "kind": "indicator",
+                "indicator": "bbands",
+                "period": 20,
+                "plot": "middle"
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "bands"
+      ],
+      "adaptation": "Daily long-only adaptation of the post’s intraday breakout family; uses a middle-band exit instead of reproducing its execution setup."
+    },
+    {
+      "id": "bb-reversion",
+      "strategy": {
+        "version": 1,
+        "name": "Bollinger mean reversion",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "price",
+                "field": "close"
+              },
+              "op": "lt",
+              "right": {
+                "kind": "indicator",
+                "indicator": "bbands",
+                "period": 20,
+                "plot": "lower"
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "price",
+                "field": "close"
+              },
+              "op": "gt",
+              "right": {
+                "kind": "indicator",
+                "indicator": "bbands",
+                "period": 20,
+                "plot": "middle"
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "cloud"
+      ],
+      "adaptation": "Replay defines these exact thresholds and exits from the discussed indicator family; this is not a reproduction of a published performance claim."
+    },
+    {
+      "id": "connors",
+      "strategy": {
+        "version": 1,
+        "name": "Connors RSI 4 pullback",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "price",
+                "field": "close"
+              },
+              "op": "gt",
+              "right": {
+                "kind": "indicator",
+                "indicator": "sma",
+                "period": 200
+              }
+            },
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "rsi",
+                "period": 4
+              },
+              "op": "crossDown",
+              "right": {
+                "kind": "constant",
+                "value": 30
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "rsi",
+                "period": 4
+              },
+              "op": "crossUp",
+              "right": {
+                "kind": "constant",
+                "value": 55
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "rsi"
+      ],
+      "adaptation": "Entry and exit thresholds follow the Reddit post; execution, sizing and costs use Replay assumptions."
+    },
+    {
+      "id": "stochastic",
+      "strategy": {
+        "version": 1,
+        "name": "Stochastic oversold recovery",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "stochastic",
+                "period": 14,
+                "plot": "main"
+              },
+              "op": "crossUp",
+              "right": {
+                "kind": "constant",
+                "value": 20
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "stochastic",
+                "period": 14,
+                "plot": "main"
+              },
+              "op": "crossUp",
+              "right": {
+                "kind": "constant",
+                "value": 80
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "indicators"
+      ],
+      "adaptation": "Replay defines these exact thresholds and exits from the discussed indicator family; this is not a reproduction of a published performance claim."
+    },
+    {
+      "id": "cci",
+      "strategy": {
+        "version": 1,
+        "name": "CCI trend impulse",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "cci",
+                "period": 20
+              },
+              "op": "crossUp",
+              "right": {
+                "kind": "constant",
+                "value": 100
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "cci",
+                "period": 20
+              },
+              "op": "crossDown",
+              "right": {
+                "kind": "constant",
+                "value": 0
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "cci"
+      ],
+      "adaptation": "CCI crossover family; Replay supplies thresholds and a zero-line exit instead of the post’s ATR stop and 3R target."
+    },
+    {
+      "id": "williams",
+      "strategy": {
+        "version": 1,
+        "name": "Williams R recovery",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "williamsr",
+                "period": 14
+              },
+              "op": "crossUp",
+              "right": {
+                "kind": "constant",
+                "value": -80
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "williamsr",
+                "period": 14
+              },
+              "op": "crossUp",
+              "right": {
+                "kind": "constant",
+                "value": -20
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "indicators"
+      ],
+      "adaptation": "Replay defines these exact thresholds and exits from the discussed indicator family; this is not a reproduction of a published performance claim."
+    },
+    {
+      "id": "roc",
+      "strategy": {
+        "version": 1,
+        "name": "Rate-of-change momentum",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "roc",
+                "period": 63
+              },
+              "op": "gt",
+              "right": {
+                "kind": "constant",
+                "value": 0
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "roc",
+                "period": 63
+              },
+              "op": "lt",
+              "right": {
+                "kind": "constant",
+                "value": 0
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "momentum"
+      ],
+      "adaptation": "Replay defines these exact thresholds and exits from the discussed indicator family; this is not a reproduction of a published performance claim."
+    },
+    {
+      "id": "cmf",
+      "strategy": {
+        "version": 1,
+        "name": "Chaikin money flow trend",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "cmf",
+                "period": 20
+              },
+              "op": "gt",
+              "right": {
+                "kind": "constant",
+                "value": 0
+              }
+            },
+            {
+              "left": {
+                "kind": "price",
+                "field": "close"
+              },
+              "op": "gt",
+              "right": {
+                "kind": "indicator",
+                "indicator": "sma",
+                "period": 50
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "cmf",
+                "period": 20
+              },
+              "op": "lt",
+              "right": {
+                "kind": "constant",
+                "value": 0
+              }
+            },
+            {
+              "left": {
+                "kind": "price",
+                "field": "close"
+              },
+              "op": "lt",
+              "right": {
+                "kind": "indicator",
+                "indicator": "sma",
+                "period": 50
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "indicators",
+        "momentum"
+      ],
+      "adaptation": "Replay defines these exact thresholds and exits from the discussed indicator family; this is not a reproduction of a published performance claim."
+    },
+    {
+      "id": "mfi",
+      "strategy": {
+        "version": 1,
+        "name": "Money flow oversold",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "mfi",
+                "period": 14
+              },
+              "op": "lt",
+              "right": {
+                "kind": "constant",
+                "value": 20
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "mfi",
+                "period": 14
+              },
+              "op": "gt",
+              "right": {
+                "kind": "constant",
+                "value": 80
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "indicators"
+      ],
+      "adaptation": "Replay defines these exact thresholds and exits from the discussed indicator family; this is not a reproduction of a published performance claim."
+    },
+    {
+      "id": "keltner",
+      "strategy": {
+        "version": 1,
+        "name": "Keltner channel breakout",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "price",
+                "field": "close"
+              },
+              "op": "crossUp",
+              "right": {
+                "kind": "indicator",
+                "indicator": "keltner",
+                "period": 20,
+                "plot": "upper"
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "price",
+                "field": "close"
+              },
+              "op": "lt",
+              "right": {
+                "kind": "indicator",
+                "indicator": "keltner",
+                "period": 20,
+                "plot": "middle"
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "keltner"
+      ],
+      "adaptation": "Replay defines these exact thresholds and exits from the discussed indicator family; this is not a reproduction of a published performance claim."
+    },
+    {
+      "id": "aroon",
+      "strategy": {
+        "version": 1,
+        "name": "Aroon trend switch",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "aroon",
+                "period": 25,
+                "plot": "main"
+              },
+              "op": "crossUp",
+              "right": {
+                "kind": "indicator",
+                "indicator": "aroon",
+                "period": 25,
+                "plot": "signal"
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "aroon",
+                "period": 25,
+                "plot": "main"
+              },
+              "op": "crossDown",
+              "right": {
+                "kind": "indicator",
+                "indicator": "aroon",
+                "period": 25,
+                "plot": "signal"
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "indicators"
+      ],
+      "adaptation": "Replay defines these exact thresholds and exits from the discussed indicator family; this is not a reproduction of a published performance claim."
+    },
+    {
+      "id": "tsi",
+      "strategy": {
+        "version": 1,
+        "name": "True strength momentum",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "tsi",
+                "period": 25
+              },
+              "op": "crossUp",
+              "right": {
+                "kind": "constant",
+                "value": 0
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "tsi",
+                "period": 25
+              },
+              "op": "crossDown",
+              "right": {
+                "kind": "constant",
+                "value": 0
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "indicators"
+      ],
+      "adaptation": "Replay defines these exact thresholds and exits from the discussed indicator family; this is not a reproduction of a published performance claim."
+    },
+    {
+      "id": "ultimate",
+      "strategy": {
+        "version": 1,
+        "name": "Ultimate oscillator recovery",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "ultimate",
+                "period": 7
+              },
+              "op": "crossUp",
+              "right": {
+                "kind": "constant",
+                "value": 30
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "ultimate",
+                "period": 7
+              },
+              "op": "crossUp",
+              "right": {
+                "kind": "constant",
+                "value": 70
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "indicators"
+      ],
+      "adaptation": "Replay defines these exact thresholds and exits from the discussed indicator family; this is not a reproduction of a published performance claim."
+    },
+    {
+      "id": "stochrsi",
+      "strategy": {
+        "version": 1,
+        "name": "Stochastic RSI pullback",
+        "longEntry": {
+          "join": "and",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "stochrsi",
+                "period": 14,
+                "plot": "main"
+              },
+              "op": "crossUp",
+              "right": {
+                "kind": "constant",
+                "value": 20
+              }
+            },
+            {
+              "left": {
+                "kind": "price",
+                "field": "close"
+              },
+              "op": "gt",
+              "right": {
+                "kind": "indicator",
+                "indicator": "sma",
+                "period": 200
+              }
+            }
+          ]
+        },
+        "shortEntry": {
+          "join": "and",
+          "conditions": []
+        },
+        "longExit": {
+          "join": "or",
+          "conditions": [
+            {
+              "left": {
+                "kind": "indicator",
+                "indicator": "stochrsi",
+                "period": 14,
+                "plot": "main"
+              },
+              "op": "crossUp",
+              "right": {
+                "kind": "constant",
+                "value": 80
+              }
+            },
+            {
+              "left": {
+                "kind": "price",
+                "field": "close"
+              },
+              "op": "lt",
+              "right": {
+                "kind": "indicator",
+                "indicator": "sma",
+                "period": 200
+              }
+            }
+          ]
+        },
+        "shortExit": {
+          "join": "and",
+          "conditions": []
+        },
+        "quantity": 10,
+        "config": {
+          "initialCapital": 100000,
+          "commissionBps": 5,
+          "slippageBps": 5
+        },
+        "allocationPct": 95
+      },
+      "sources": [
+        "indicators",
+        "macd"
+      ],
+      "adaptation": "Replay defines these exact thresholds and exits from the discussed indicator family; this is not a reproduction of a published performance claim."
+    }
+  ],
+  "method": "Fixed parameters, long-only, 95% of current equity per entry; $100,000 fresh capital per ticker/window; 5 bps commission + 5 bps slippage each side; adjusted daily yfinance OHLCV; prior data used only for indicator warmup; signal at close, execution next open; final position liquidated at final close. No stops/targets, leverage, cash interest or parameter search. Buy-and-hold uses the same sizing and costs. Later sample is a chronological check, not truly unseen: source ideas were published after portions of this history. No profitability guarantee; all results retained.",
+  "sharpe": "UTC daily equity simple returns including idle cash; sample standard deviation; zero risk-free rate; sqrt(252) annualization. Null means insufficient observations or zero variance. Drawdown uses bar-close equity, not intrabar worst-case.",
+  "datasets": [
+    {
+      "ticker": "SPY",
+      "source": "yfinance",
+      "adjusted": true,
+      "fetchedAt": "2026-09-20T22:12:06.351134+00:00",
+      "bars": 2766,
+      "sha256": "810dd3dad2c4c79e6d38a3d2dbbf2001a32d469aed060086e500fed7670042ba",
+      "first": 1420156800,
+      "last": 1767139200
+    },
+    {
+      "ticker": "QQQ",
+      "source": "yfinance",
+      "adjusted": true,
+      "fetchedAt": "2026-09-20T22:12:51.362162+00:00",
+      "bars": 2766,
+      "sha256": "b5d85585c304cf3d30612057539be167356015e061c2f59d8d7b262b20c10de1",
+      "first": 1420156800,
+      "last": 1767139200
+    },
+    {
+      "ticker": "GLD",
+      "source": "yfinance",
+      "adjusted": true,
+      "fetchedAt": "2026-09-20T22:12:54.336979+00:00",
+      "bars": 2766,
+      "sha256": "cfa42d0bc1177fd70b829d0f0b37ebf072e188d7c019cd9ca07d5236b8f3f17f",
+      "first": 1420156800,
+      "last": 1767139200
+    }
+  ],
+  "results": [
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "sma",
+      "name": "SMA crossover",
+      "pnl": 80697.187930871,
+      "returnPct": 80.69718793087101,
+      "maxDrawdownPct": 11.884460604328714,
+      "sharpe": 1.1507459756845497,
+      "trades": 11
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "rsi",
+      "name": "RSI threshold",
+      "pnl": 35693.60553445431,
+      "returnPct": 35.69360553445431,
+      "maxDrawdownPct": 27.411770760284572,
+      "sharpe": 0.4785543086484416,
+      "trades": 6
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "donchian",
+      "name": "Donchian breakout",
+      "pnl": 64466.29164610137,
+      "returnPct": 64.46629164610137,
+      "maxDrawdownPct": 7.3448141379851215,
+      "sharpe": 1.1792877153772259,
+      "trades": 21
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "sma200",
+      "name": "Price above SMA 200",
+      "pnl": 54537.83851312118,
+      "returnPct": 54.53783851312118,
+      "maxDrawdownPct": 18.939782841384744,
+      "sharpe": 0.8046440605823669,
+      "trades": 12
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "ema",
+      "name": "EMA crossover",
+      "pnl": 34438.032571985794,
+      "returnPct": 34.438032571985794,
+      "maxDrawdownPct": 17.043325559419895,
+      "sharpe": 0.6306134946596268,
+      "trades": 21
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "macd",
+      "name": "MACD signal crossover",
+      "pnl": 49910.014422855165,
+      "returnPct": 49.91001442285516,
+      "maxDrawdownPct": 11.911520262503643,
+      "sharpe": 0.8782899651659065,
+      "trades": 50
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "adx",
+      "name": "ADX directional trend",
+      "pnl": 2132.0276867593493,
+      "returnPct": 2.1320276867593493,
+      "maxDrawdownPct": 6.864555463758597,
+      "sharpe": 0.11202916239755041,
+      "trades": 9
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "ichimoku",
+      "name": "Ichimoku conversion / base",
+      "pnl": 32712.668976932706,
+      "returnPct": 32.712668976932704,
+      "maxDrawdownPct": 17.133591457167206,
+      "sharpe": 0.5760895338877179,
+      "trades": 23
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "supertrend",
+      "name": "Supertrend reversal",
+      "pnl": 43555.89368591731,
+      "returnPct": 43.55589368591731,
+      "maxDrawdownPct": 14.211037179894678,
+      "sharpe": 0.7722423419359502,
+      "trades": 21
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "psar",
+      "name": "Parabolic SAR reversal",
+      "pnl": 55157.569272593886,
+      "returnPct": 55.15756927259389,
+      "maxDrawdownPct": 12.832072967891007,
+      "sharpe": 0.8807254634409397,
+      "trades": 59
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "bb-breakout",
+      "name": "Bollinger momentum breakout",
+      "pnl": 7435.420272673859,
+      "returnPct": 7.435420272673858,
+      "maxDrawdownPct": 8.385811417517406,
+      "sharpe": 0.28529395830833376,
+      "trades": 22
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "bb-reversion",
+      "name": "Bollinger mean reversion",
+      "pnl": 17112.272853126255,
+      "returnPct": 17.112272853126253,
+      "maxDrawdownPct": 27.77207726302107,
+      "sharpe": 0.2972739588574722,
+      "trades": 20
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "connors",
+      "name": "Connors RSI 4 pullback",
+      "pnl": 5866.725164463991,
+      "returnPct": 5.866725164463991,
+      "maxDrawdownPct": 12.601177886558112,
+      "sharpe": 0.1824632676328715,
+      "trades": 40
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "stochastic",
+      "name": "Stochastic oversold recovery",
+      "pnl": 14179.39490894314,
+      "returnPct": 14.179394908943141,
+      "maxDrawdownPct": 26.916220757492493,
+      "sharpe": 0.265996492934698,
+      "trades": 19
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "cci",
+      "name": "CCI trend impulse",
+      "pnl": 50785.45387324551,
+      "returnPct": 50.78545387324551,
+      "maxDrawdownPct": 12.639195259901864,
+      "sharpe": 1.011791704645218,
+      "trades": 32
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "williams",
+      "name": "Williams R recovery",
+      "pnl": 28609.086981254397,
+      "returnPct": 28.609086981254396,
+      "maxDrawdownPct": 26.96494664776004,
+      "sharpe": 0.4273093195051456,
+      "trades": 28
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "roc",
+      "name": "Rate-of-change momentum",
+      "pnl": 36490.49833504192,
+      "returnPct": 36.49049833504192,
+      "maxDrawdownPct": 19.054217161127912,
+      "sharpe": 0.6321335804383504,
+      "trades": 25
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "cmf",
+      "name": "Chaikin money flow trend",
+      "pnl": 10687.078108907765,
+      "returnPct": 10.687078108907764,
+      "maxDrawdownPct": 12.957384145059667,
+      "sharpe": 0.27487027856917484,
+      "trades": 52
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "mfi",
+      "name": "Money flow oversold",
+      "pnl": 44697.22116959508,
+      "returnPct": 44.69722116959508,
+      "maxDrawdownPct": 27.00612711557044,
+      "sharpe": 0.5639615625466181,
+      "trades": 4
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "keltner",
+      "name": "Keltner channel breakout",
+      "pnl": 15296.572695463634,
+      "returnPct": 15.296572695463635,
+      "maxDrawdownPct": 10.239319619363908,
+      "sharpe": 0.49991849322894144,
+      "trades": 20
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "aroon",
+      "name": "Aroon trend switch",
+      "pnl": 42765.75777032657,
+      "returnPct": 42.76575777032657,
+      "maxDrawdownPct": 15.199908050239106,
+      "sharpe": 0.7594245068980116,
+      "trades": 19
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "tsi",
+      "name": "True strength momentum",
+      "pnl": 39881.40550992568,
+      "returnPct": 39.88140550992568,
+      "maxDrawdownPct": 13.684424001769763,
+      "sharpe": 0.711135576273128,
+      "trades": 19
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "ultimate",
+      "name": "Ultimate oscillator recovery",
+      "pnl": 4355.230844412683,
+      "returnPct": 4.355230844412683,
+      "maxDrawdownPct": 29.299858837064548,
+      "sharpe": 0.13123605701662694,
+      "trades": 4
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "stochrsi",
+      "name": "Stochastic RSI pullback",
+      "pnl": 24220.497937750697,
+      "returnPct": 24.220497937750697,
+      "maxDrawdownPct": 10.887224397789417,
+      "sharpe": 0.689785836494023,
+      "trades": 36
+    },
+    {
+      "ticker": "SPY",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "buy-hold",
+      "name": "Buy and hold (95%)",
+      "pnl": 99732.50281877196,
+      "returnPct": 99.73250281877196,
+      "maxDrawdownPct": 32.77101823883375,
+      "sharpe": 0.8535549933047526,
+      "trades": 1
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "sma",
+      "name": "SMA crossover",
+      "pnl": 11816.416139923123,
+      "returnPct": 11.816416139923124,
+      "maxDrawdownPct": 27.290238193319627,
+      "sharpe": 0.273556855633028,
+      "trades": 11
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "rsi",
+      "name": "RSI threshold",
+      "pnl": 37478.145197610196,
+      "returnPct": 37.478145197610196,
+      "maxDrawdownPct": 19.597688483279196,
+      "sharpe": 0.5624908590900217,
+      "trades": 4
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "donchian",
+      "name": "Donchian breakout",
+      "pnl": 29739.93912660086,
+      "returnPct": 29.73993912660086,
+      "maxDrawdownPct": 8.758278034641354,
+      "sharpe": 0.6115262763293762,
+      "trades": 27
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "sma200",
+      "name": "Price above SMA 200",
+      "pnl": 65944.13647179402,
+      "returnPct": 65.94413647179401,
+      "maxDrawdownPct": 19.525515746547423,
+      "sharpe": 0.974323632239297,
+      "trades": 15
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "ema",
+      "name": "EMA crossover",
+      "pnl": 62169.75000987493,
+      "returnPct": 62.16975000987493,
+      "maxDrawdownPct": 12.058145653848722,
+      "sharpe": 0.9952896010314934,
+      "trades": 15
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "macd",
+      "name": "MACD signal crossover",
+      "pnl": 4970.322590655051,
+      "returnPct": 4.9703225906550506,
+      "maxDrawdownPct": 15.258582841001935,
+      "sharpe": 0.14760621858842093,
+      "trades": 58
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "adx",
+      "name": "ADX directional trend",
+      "pnl": 18580.19308920442,
+      "returnPct": 18.580193089204418,
+      "maxDrawdownPct": 6.90514410229898,
+      "sharpe": 0.7974534643387206,
+      "trades": 9
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "ichimoku",
+      "name": "Ichimoku conversion / base",
+      "pnl": 49860.80692781121,
+      "returnPct": 49.86080692781121,
+      "maxDrawdownPct": 19.941691376147443,
+      "sharpe": 0.8229264927426011,
+      "trades": 20
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "supertrend",
+      "name": "Supertrend reversal",
+      "pnl": 36885.058978232206,
+      "returnPct": 36.88505897823221,
+      "maxDrawdownPct": 15.608623175988704,
+      "sharpe": 0.6842146730188448,
+      "trades": 22
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "psar",
+      "name": "Parabolic SAR reversal",
+      "pnl": 952.2762602172006,
+      "returnPct": 0.9522762602172006,
+      "maxDrawdownPct": 26.483705799079267,
+      "sharpe": 0.07053507958757076,
+      "trades": 64
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "bb-breakout",
+      "name": "Bollinger momentum breakout",
+      "pnl": 9147.610281975169,
+      "returnPct": 9.147610281975169,
+      "maxDrawdownPct": 8.185242873939034,
+      "sharpe": 0.2814600475961365,
+      "trades": 25
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "bb-reversion",
+      "name": "Bollinger mean reversion",
+      "pnl": 34567.578458967124,
+      "returnPct": 34.56757845896713,
+      "maxDrawdownPct": 8.77308185648765,
+      "sharpe": 0.6089491976516473,
+      "trades": 23
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "connors",
+      "name": "Connors RSI 4 pullback",
+      "pnl": 29611.3088173922,
+      "returnPct": 29.6113088173922,
+      "maxDrawdownPct": 8.071754940148287,
+      "sharpe": 0.8570621382975628,
+      "trades": 41
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "stochastic",
+      "name": "Stochastic oversold recovery",
+      "pnl": -5459.655428495127,
+      "returnPct": -5.459655428495127,
+      "maxDrawdownPct": 21.58828566525182,
+      "sharpe": -0.041845902238696324,
+      "trades": 21
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "cci",
+      "name": "CCI trend impulse",
+      "pnl": 24609.734604137964,
+      "returnPct": 24.609734604137966,
+      "maxDrawdownPct": 13.54277635398062,
+      "sharpe": 0.5521508083102921,
+      "trades": 35
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "williams",
+      "name": "Williams R recovery",
+      "pnl": 13292.730106437317,
+      "returnPct": 13.292730106437316,
+      "maxDrawdownPct": 17.852949273271303,
+      "sharpe": 0.27300383329291367,
+      "trades": 31
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "roc",
+      "name": "Rate-of-change momentum",
+      "pnl": 54564.73776949913,
+      "returnPct": 54.56473776949913,
+      "maxDrawdownPct": 27.13569014179038,
+      "sharpe": 0.8614977876884813,
+      "trades": 21
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "cmf",
+      "name": "Chaikin money flow trend",
+      "pnl": 41332.25651361709,
+      "returnPct": 41.33225651361709,
+      "maxDrawdownPct": 12.309680835713714,
+      "sharpe": 0.7738052121952166,
+      "trades": 47
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "mfi",
+      "name": "Money flow oversold",
+      "pnl": 56878.4927095508,
+      "returnPct": 56.878492709550805,
+      "maxDrawdownPct": 19.59549945783988,
+      "sharpe": 0.7519411814205349,
+      "trades": 5
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "keltner",
+      "name": "Keltner channel breakout",
+      "pnl": -1728.5831187549775,
+      "returnPct": -1.7285831187549774,
+      "maxDrawdownPct": 13.10752406364715,
+      "sharpe": -0.017180291117335256,
+      "trades": 27
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "aroon",
+      "name": "Aroon trend switch",
+      "pnl": 48656.523863246315,
+      "returnPct": 48.65652386324631,
+      "maxDrawdownPct": 14.793515759817174,
+      "sharpe": 0.8499182001548438,
+      "trades": 17
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "tsi",
+      "name": "True strength momentum",
+      "pnl": 48450.31897473117,
+      "returnPct": 48.45031897473117,
+      "maxDrawdownPct": 11.817874545244337,
+      "sharpe": 0.8625190271770372,
+      "trades": 14
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "ultimate",
+      "name": "Ultimate oscillator recovery",
+      "pnl": 25281.43252956969,
+      "returnPct": 25.281432529569692,
+      "maxDrawdownPct": 8.59570324101252,
+      "sharpe": 0.7978307428033492,
+      "trades": 6
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "stochrsi",
+      "name": "Stochastic RSI pullback",
+      "pnl": 23200.069459524675,
+      "returnPct": 23.200069459524673,
+      "maxDrawdownPct": 17.538478463221466,
+      "sharpe": 0.6331020921097535,
+      "trades": 32
+    },
+    {
+      "ticker": "SPY",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "buy-hold",
+      "name": "Buy and hold (95%)",
+      "pnl": 89541.8801181982,
+      "returnPct": 89.5418801181982,
+      "maxDrawdownPct": 23.53505563864483,
+      "sharpe": 0.8637232157024476,
+      "trades": 1
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "sma",
+      "name": "SMA crossover",
+      "pnl": 102323.231174254,
+      "returnPct": 102.323231174254,
+      "maxDrawdownPct": 17.575813948804463,
+      "sharpe": 1.0212134393475094,
+      "trades": 11
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "rsi",
+      "name": "RSI threshold",
+      "pnl": 81030.21860666497,
+      "returnPct": 81.03021860666497,
+      "maxDrawdownPct": 21.391834613609724,
+      "sharpe": 0.8159930331951339,
+      "trades": 6
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "donchian",
+      "name": "Donchian breakout",
+      "pnl": 58948.741416940175,
+      "returnPct": 58.94874141694017,
+      "maxDrawdownPct": 14.215832968908545,
+      "sharpe": 0.9279235843497351,
+      "trades": 24
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "sma200",
+      "name": "Price above SMA 200",
+      "pnl": 91758.10155950213,
+      "returnPct": 91.75810155950214,
+      "maxDrawdownPct": 22.438547272160402,
+      "sharpe": 0.8738177193233964,
+      "trades": 17
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "ema",
+      "name": "EMA crossover",
+      "pnl": 93547.28490905714,
+      "returnPct": 93.54728490905714,
+      "maxDrawdownPct": 17.058551992136266,
+      "sharpe": 1.0786539551152101,
+      "trades": 16
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "macd",
+      "name": "MACD signal crossover",
+      "pnl": 47624.693486151344,
+      "returnPct": 47.624693486151344,
+      "maxDrawdownPct": 19.4690945603298,
+      "sharpe": 0.7002123319430973,
+      "trades": 53
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "adx",
+      "name": "ADX directional trend",
+      "pnl": 12007.189469588528,
+      "returnPct": 12.007189469588528,
+      "maxDrawdownPct": 11.68839767657749,
+      "sharpe": 0.406709228728805,
+      "trades": 7
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "ichimoku",
+      "name": "Ichimoku conversion / base",
+      "pnl": 82319.90882188946,
+      "returnPct": 82.31990882188946,
+      "maxDrawdownPct": 17.536466021597626,
+      "sharpe": 0.9304787114292805,
+      "trades": 21
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "supertrend",
+      "name": "Supertrend reversal",
+      "pnl": 67248.760771903,
+      "returnPct": 67.24876077190301,
+      "maxDrawdownPct": 19.587207270591126,
+      "sharpe": 0.9493919785367724,
+      "trades": 22
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "psar",
+      "name": "Parabolic SAR reversal",
+      "pnl": 51952.31926364137,
+      "returnPct": 51.95231926364137,
+      "maxDrawdownPct": 15.621050035591027,
+      "sharpe": 0.7016706006397282,
+      "trades": 62
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "bb-breakout",
+      "name": "Bollinger momentum breakout",
+      "pnl": 18436.655187546305,
+      "returnPct": 18.436655187546304,
+      "maxDrawdownPct": 14.026163474084164,
+      "sharpe": 0.4245314657961612,
+      "trades": 23
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "bb-reversion",
+      "name": "Bollinger mean reversion",
+      "pnl": 32179.10418241832,
+      "returnPct": 32.17910418241832,
+      "maxDrawdownPct": 21.303150705156014,
+      "sharpe": 0.4513755068191357,
+      "trades": 20
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "connors",
+      "name": "Connors RSI 4 pullback",
+      "pnl": 7652.668043028505,
+      "returnPct": 7.6526680430285055,
+      "maxDrawdownPct": 10.919313236127943,
+      "sharpe": 0.1969856847442665,
+      "trades": 39
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "stochastic",
+      "name": "Stochastic oversold recovery",
+      "pnl": 20100.713040771487,
+      "returnPct": 20.10071304077149,
+      "maxDrawdownPct": 21.301195879251672,
+      "sharpe": 0.335166475365187,
+      "trades": 16
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "cci",
+      "name": "CCI trend impulse",
+      "pnl": 56608.592095688626,
+      "returnPct": 56.60859209568863,
+      "maxDrawdownPct": 13.468626196007822,
+      "sharpe": 0.8783159236677469,
+      "trades": 35
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "williams",
+      "name": "Williams R recovery",
+      "pnl": 25790.416876136514,
+      "returnPct": 25.790416876136515,
+      "maxDrawdownPct": 21.301195875053498,
+      "sharpe": 0.38035154948899147,
+      "trades": 29
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "roc",
+      "name": "Rate-of-change momentum",
+      "pnl": 63333.501485977584,
+      "returnPct": 63.333501485977585,
+      "maxDrawdownPct": 17.55268796492826,
+      "sharpe": 0.7451706692235532,
+      "trades": 24
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "cmf",
+      "name": "Chaikin money flow trend",
+      "pnl": 60625.2266842972,
+      "returnPct": 60.6252266842972,
+      "maxDrawdownPct": 19.169042417123507,
+      "sharpe": 0.8700339247176035,
+      "trades": 51
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "mfi",
+      "name": "Money flow oversold",
+      "pnl": 101255.67601210598,
+      "returnPct": 101.25567601210598,
+      "maxDrawdownPct": 21.832483674049314,
+      "sharpe": 0.9021863275148494,
+      "trades": 7
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "keltner",
+      "name": "Keltner channel breakout",
+      "pnl": -1090.933405842894,
+      "returnPct": -1.0909334058428939,
+      "maxDrawdownPct": 18.71518533431042,
+      "sharpe": 0.016860947500666097,
+      "trades": 27
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "aroon",
+      "name": "Aroon trend switch",
+      "pnl": 96982.86496928864,
+      "returnPct": 96.98286496928864,
+      "maxDrawdownPct": 17.83121282864392,
+      "sharpe": 1.1780339777854802,
+      "trades": 20
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "tsi",
+      "name": "True strength momentum",
+      "pnl": 85984.81340459958,
+      "returnPct": 85.98481340459958,
+      "maxDrawdownPct": 18.231970667718116,
+      "sharpe": 1.0137785127257377,
+      "trades": 16
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "ultimate",
+      "name": "Ultimate oscillator recovery",
+      "pnl": 40880.74788650847,
+      "returnPct": 40.88074788650847,
+      "maxDrawdownPct": 21.34148843095243,
+      "sharpe": 0.5466051991428376,
+      "trades": 5
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "stochrsi",
+      "name": "Stochastic RSI pullback",
+      "pnl": 34866.59754209861,
+      "returnPct": 34.86659754209861,
+      "maxDrawdownPct": 11.66562932766542,
+      "sharpe": 0.7680892595379144,
+      "trades": 37
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "buy-hold",
+      "name": "Buy and hold (95%)",
+      "pnl": 188559.67579968914,
+      "returnPct": 188.55967579968913,
+      "maxDrawdownPct": 27.904880598603853,
+      "sharpe": 1.1023498901460418,
+      "trades": 1
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "sma",
+      "name": "SMA crossover",
+      "pnl": 30272.115430058766,
+      "returnPct": 30.272115430058765,
+      "maxDrawdownPct": 29.024157218682127,
+      "sharpe": 0.4507048369560616,
+      "trades": 12
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "rsi",
+      "name": "RSI threshold",
+      "pnl": 14447.72470738276,
+      "returnPct": 14.44772470738276,
+      "maxDrawdownPct": 28.179940554490223,
+      "sharpe": 0.24900140269791615,
+      "trades": 4
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "donchian",
+      "name": "Donchian breakout",
+      "pnl": 47552.05602164456,
+      "returnPct": 47.55205602164456,
+      "maxDrawdownPct": 15.18771753875227,
+      "sharpe": 0.7182887352239161,
+      "trades": 23
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "sma200",
+      "name": "Price above SMA 200",
+      "pnl": 93277.03494482965,
+      "returnPct": 93.27703494482965,
+      "maxDrawdownPct": 20.928661160991663,
+      "sharpe": 0.9614294707161611,
+      "trades": 10
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "ema",
+      "name": "EMA crossover",
+      "pnl": 40732.5078166661,
+      "returnPct": 40.7325078166661,
+      "maxDrawdownPct": 24.089123052148533,
+      "sharpe": 0.5773722318761789,
+      "trades": 19
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "macd",
+      "name": "MACD signal crossover",
+      "pnl": 10441.388797858104,
+      "returnPct": 10.441388797858105,
+      "maxDrawdownPct": 24.227985980258463,
+      "sharpe": 0.21611724755877257,
+      "trades": 47
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "adx",
+      "name": "ADX directional trend",
+      "pnl": 10610.82455998371,
+      "returnPct": 10.61082455998371,
+      "maxDrawdownPct": 5.582366234954502,
+      "sharpe": 0.4714624373321603,
+      "trades": 7
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "ichimoku",
+      "name": "Ichimoku conversion / base",
+      "pnl": 63559.33715858747,
+      "returnPct": 63.55933715858747,
+      "maxDrawdownPct": 22.427309761920807,
+      "sharpe": 0.7800515034294252,
+      "trades": 20
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "supertrend",
+      "name": "Supertrend reversal",
+      "pnl": 51091.78781978437,
+      "returnPct": 51.091787819784365,
+      "maxDrawdownPct": 15.20466527308363,
+      "sharpe": 0.7260516589870304,
+      "trades": 19
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "psar",
+      "name": "Parabolic SAR reversal",
+      "pnl": 2668.618904587609,
+      "returnPct": 2.668618904587609,
+      "maxDrawdownPct": 37.89088349297547,
+      "sharpe": 0.10878707216777392,
+      "trades": 62
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "bb-breakout",
+      "name": "Bollinger momentum breakout",
+      "pnl": 12253.741341983172,
+      "returnPct": 12.253741341983172,
+      "maxDrawdownPct": 9.470671768555885,
+      "sharpe": 0.299215165436337,
+      "trades": 23
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "bb-reversion",
+      "name": "Bollinger mean reversion",
+      "pnl": 10892.442980483,
+      "returnPct": 10.892442980483,
+      "maxDrawdownPct": 15.157041064273796,
+      "sharpe": 0.21781689595608442,
+      "trades": 19
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "connors",
+      "name": "Connors RSI 4 pullback",
+      "pnl": 42888.77733563783,
+      "returnPct": 42.88877733563783,
+      "maxDrawdownPct": 11.349774001845153,
+      "sharpe": 0.8386299838187926,
+      "trades": 42
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "stochastic",
+      "name": "Stochastic oversold recovery",
+      "pnl": 10721.532894553966,
+      "returnPct": 10.721532894553967,
+      "maxDrawdownPct": 23.62507433819017,
+      "sharpe": 0.21439638667219843,
+      "trades": 24
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "cci",
+      "name": "CCI trend impulse",
+      "pnl": 17367.382011267662,
+      "returnPct": 17.36738201126766,
+      "maxDrawdownPct": 20.139644032490324,
+      "sharpe": 0.32657879782072186,
+      "trades": 37
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "williams",
+      "name": "Williams R recovery",
+      "pnl": 11814.222487793057,
+      "returnPct": 11.814222487793057,
+      "maxDrawdownPct": 27.240291105566133,
+      "sharpe": 0.21999581235832366,
+      "trades": 35
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "roc",
+      "name": "Rate-of-change momentum",
+      "pnl": 56105.740296190605,
+      "returnPct": 56.1057402961906,
+      "maxDrawdownPct": 21.004525686793702,
+      "sharpe": 0.68519733597669,
+      "trades": 22
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "cmf",
+      "name": "Chaikin money flow trend",
+      "pnl": 34887.395654405875,
+      "returnPct": 34.88739565440587,
+      "maxDrawdownPct": 20.450389401123147,
+      "sharpe": 0.5324737821654826,
+      "trades": 49
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "mfi",
+      "name": "Money flow oversold",
+      "pnl": 39374.47712738844,
+      "returnPct": 39.37447712738844,
+      "maxDrawdownPct": 28.240550208067113,
+      "sharpe": 0.46028238987581316,
+      "trades": 3
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "keltner",
+      "name": "Keltner channel breakout",
+      "pnl": 17719.770253829352,
+      "returnPct": 17.719770253829353,
+      "maxDrawdownPct": 10.945182541081023,
+      "sharpe": 0.40451989033132174,
+      "trades": 22
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "aroon",
+      "name": "Aroon trend switch",
+      "pnl": 64344.42233710992,
+      "returnPct": 64.34442233710992,
+      "maxDrawdownPct": 21.279913415580296,
+      "sharpe": 0.7976459673325043,
+      "trades": 18
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "tsi",
+      "name": "True strength momentum",
+      "pnl": 36219.67308194633,
+      "returnPct": 36.219673081946326,
+      "maxDrawdownPct": 25.977543123068713,
+      "sharpe": 0.5252730733510712,
+      "trades": 19
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "ultimate",
+      "name": "Ultimate oscillator recovery",
+      "pnl": 16107.230615121516,
+      "returnPct": 16.107230615121516,
+      "maxDrawdownPct": 13.010829382867541,
+      "sharpe": 0.44955573159642154,
+      "trades": 4
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "stochrsi",
+      "name": "Stochastic RSI pullback",
+      "pnl": 23542.878223534703,
+      "returnPct": 23.542878223534704,
+      "maxDrawdownPct": 13.09584881309174,
+      "sharpe": 0.528245416808683,
+      "trades": 27
+    },
+    {
+      "ticker": "QQQ",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "buy-hold",
+      "name": "Buy and hold (95%)",
+      "pnl": 95465.82090400581,
+      "returnPct": 95.46582090400581,
+      "maxDrawdownPct": 33.7372383462732,
+      "sharpe": 0.7287934776734208,
+      "trades": 1
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "sma",
+      "name": "SMA crossover",
+      "pnl": 37988.819631744525,
+      "returnPct": 37.988819631744526,
+      "maxDrawdownPct": 11.955722979016423,
+      "sharpe": 0.6507147781621447,
+      "trades": 13
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "rsi",
+      "name": "RSI threshold",
+      "pnl": 11459.05562315107,
+      "returnPct": 11.459055623151071,
+      "maxDrawdownPct": 13.036947025285977,
+      "sharpe": 0.477043688166982,
+      "trades": 4
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "donchian",
+      "name": "Donchian breakout",
+      "pnl": 20713.98319041387,
+      "returnPct": 20.71398319041387,
+      "maxDrawdownPct": 13.02996023603046,
+      "sharpe": 0.43033613477223326,
+      "trades": 19
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "sma200",
+      "name": "Price above SMA 200",
+      "pnl": 31576.413470332336,
+      "returnPct": 31.576413470332337,
+      "maxDrawdownPct": 14.577143589028003,
+      "sharpe": 0.519974486651145,
+      "trades": 16
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "ema",
+      "name": "EMA crossover",
+      "pnl": 38715.01678610372,
+      "returnPct": 38.71501678610372,
+      "maxDrawdownPct": 12.696659414943667,
+      "sharpe": 0.658119565522847,
+      "trades": 21
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "macd",
+      "name": "MACD signal crossover",
+      "pnl": -4575.42239231561,
+      "returnPct": -4.57542239231561,
+      "maxDrawdownPct": 16.349688267673947,
+      "sharpe": -0.05796827569345324,
+      "trades": 55
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "adx",
+      "name": "ADX directional trend",
+      "pnl": -21.265003229680588,
+      "returnPct": -0.021265003229680588,
+      "maxDrawdownPct": 8.405970383517309,
+      "sharpe": 0.02049703902659349,
+      "trades": 4
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "ichimoku",
+      "name": "Ichimoku conversion / base",
+      "pnl": 41812.10086012582,
+      "returnPct": 41.812100860125824,
+      "maxDrawdownPct": 13.040728499012957,
+      "sharpe": 0.7177469948718124,
+      "trades": 28
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "supertrend",
+      "name": "Supertrend reversal",
+      "pnl": 32334.085213862505,
+      "returnPct": 32.33408521386251,
+      "maxDrawdownPct": 13.548664407203256,
+      "sharpe": 0.5780274408184098,
+      "trades": 22
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "psar",
+      "name": "Parabolic SAR reversal",
+      "pnl": 18070.266260921955,
+      "returnPct": 18.070266260921954,
+      "maxDrawdownPct": 14.83447050457691,
+      "sharpe": 0.3870400983811425,
+      "trades": 54
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "bb-breakout",
+      "name": "Bollinger momentum breakout",
+      "pnl": 17161.473861448772,
+      "returnPct": 17.161473861448773,
+      "maxDrawdownPct": 13.08833870086025,
+      "sharpe": 0.4507113877678911,
+      "trades": 22
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "bb-reversion",
+      "name": "Bollinger mean reversion",
+      "pnl": 22418.645192416807,
+      "returnPct": 22.418645192416808,
+      "maxDrawdownPct": 9.648242968394953,
+      "sharpe": 0.7395557873477863,
+      "trades": 19
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "connors",
+      "name": "Connors RSI 4 pullback",
+      "pnl": 9394.950294283728,
+      "returnPct": 9.394950294283728,
+      "maxDrawdownPct": 8.223301700342544,
+      "sharpe": 0.3145251427225603,
+      "trades": 36
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "stochastic",
+      "name": "Stochastic oversold recovery",
+      "pnl": 7.618512922243099,
+      "returnPct": 0.007618512922243099,
+      "maxDrawdownPct": 13.217607920499225,
+      "sharpe": 0.037519770536197566,
+      "trades": 21
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "cci",
+      "name": "CCI trend impulse",
+      "pnl": 22499.364918881285,
+      "returnPct": 22.499364918881284,
+      "maxDrawdownPct": 13.330053526354908,
+      "sharpe": 0.4833475951031019,
+      "trades": 36
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "williams",
+      "name": "Williams R recovery",
+      "pnl": 18959.272698636065,
+      "returnPct": 18.959272698636063,
+      "maxDrawdownPct": 11.5144044987829,
+      "sharpe": 0.5181540467582361,
+      "trades": 30
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "roc",
+      "name": "Rate-of-change momentum",
+      "pnl": 51999.818150015984,
+      "returnPct": 51.99981815001598,
+      "maxDrawdownPct": 11.959723914072027,
+      "sharpe": 0.7857555332773511,
+      "trades": 22
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "cmf",
+      "name": "Chaikin money flow trend",
+      "pnl": 34733.646315278515,
+      "returnPct": 34.73364631527851,
+      "maxDrawdownPct": 14.018439530256085,
+      "sharpe": 0.7005347029110435,
+      "trades": 50
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "mfi",
+      "name": "Money flow oversold",
+      "pnl": -292.7652666069189,
+      "returnPct": -0.2927652666069189,
+      "maxDrawdownPct": 13.045407901779015,
+      "sharpe": -0.0007658331762730933,
+      "trades": 1
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "keltner",
+      "name": "Keltner channel breakout",
+      "pnl": 11984.273126376764,
+      "returnPct": 11.984273126376763,
+      "maxDrawdownPct": 15.10259954728165,
+      "sharpe": 0.3240398630296492,
+      "trades": 21
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "aroon",
+      "name": "Aroon trend switch",
+      "pnl": 18671.88798264187,
+      "returnPct": 18.67188798264187,
+      "maxDrawdownPct": 17.732427863709546,
+      "sharpe": 0.3738113281764904,
+      "trades": 25
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "tsi",
+      "name": "True strength momentum",
+      "pnl": 36334.84711466887,
+      "returnPct": 36.33484711466887,
+      "maxDrawdownPct": 12.696122158494639,
+      "sharpe": 0.6288447791001723,
+      "trades": 20
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "ultimate",
+      "name": "Ultimate oscillator recovery",
+      "pnl": 8928.189123131931,
+      "returnPct": 8.928189123131931,
+      "maxDrawdownPct": 16.420503185470167,
+      "sharpe": 0.2945704059943642,
+      "trades": 6
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "stochrsi",
+      "name": "Stochastic RSI pullback",
+      "pnl": -16375.602325224609,
+      "returnPct": -16.37560232522461,
+      "maxDrawdownPct": 17.004424660928333,
+      "sharpe": -0.47964187851794526,
+      "trades": 28
+    },
+    {
+      "ticker": "GLD",
+      "window": "Development",
+      "from": "2016-01-01",
+      "to": "2021-01-01",
+      "id": "buy-hold",
+      "name": "Buy and hold (95%)",
+      "pnl": 68971.16233038137,
+      "returnPct": 68.97116233038138,
+      "maxDrawdownPct": 17.049974616648267,
+      "sharpe": 0.8517972515919494,
+      "trades": 1
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "sma",
+      "name": "SMA crossover",
+      "pnl": 62934.98051048911,
+      "returnPct": 62.93498051048911,
+      "maxDrawdownPct": 12.012043755159292,
+      "sharpe": 0.8528887708511309,
+      "trades": 15
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "rsi",
+      "name": "RSI threshold",
+      "pnl": 14514.616915362276,
+      "returnPct": 14.514616915362275,
+      "maxDrawdownPct": 12.708980117941135,
+      "sharpe": 0.44475759828404265,
+      "trades": 4
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "donchian",
+      "name": "Donchian breakout",
+      "pnl": 13207.617876856297,
+      "returnPct": 13.207617876856297,
+      "maxDrawdownPct": 13.332870444375597,
+      "sharpe": 0.28582145662458747,
+      "trades": 28
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "sma200",
+      "name": "Price above SMA 200",
+      "pnl": 65163.43639536618,
+      "returnPct": 65.16343639536618,
+      "maxDrawdownPct": 24.368282386686833,
+      "sharpe": 0.8295951188221801,
+      "trades": 29
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "ema",
+      "name": "EMA crossover",
+      "pnl": 72441.9537514919,
+      "returnPct": 72.44195375149191,
+      "maxDrawdownPct": 13.303569509273494,
+      "sharpe": 0.9371333817611872,
+      "trades": 21
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "macd",
+      "name": "MACD signal crossover",
+      "pnl": 40619.14392711586,
+      "returnPct": 40.61914392711586,
+      "maxDrawdownPct": 12.669569442708523,
+      "sharpe": 0.676829904554013,
+      "trades": 51
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "adx",
+      "name": "ADX directional trend",
+      "pnl": -1615.2902999181388,
+      "returnPct": -1.6152902999181387,
+      "maxDrawdownPct": 6.552954193004368,
+      "sharpe": -0.055169386696067524,
+      "trades": 5
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "ichimoku",
+      "name": "Ichimoku conversion / base",
+      "pnl": 34435.86338977248,
+      "returnPct": 34.43586338977248,
+      "maxDrawdownPct": 19.305253549029835,
+      "sharpe": 0.5566987923512287,
+      "trades": 32
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "supertrend",
+      "name": "Supertrend reversal",
+      "pnl": 36023.02319780612,
+      "returnPct": 36.02302319780612,
+      "maxDrawdownPct": 17.757615848381374,
+      "sharpe": 0.5943443509480123,
+      "trades": 25
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "psar",
+      "name": "Parabolic SAR reversal",
+      "pnl": 67519.91489370551,
+      "returnPct": 67.51991489370552,
+      "maxDrawdownPct": 11.832738033423361,
+      "sharpe": 0.9690541528862244,
+      "trades": 50
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "bb-breakout",
+      "name": "Bollinger momentum breakout",
+      "pnl": 12736.797755084204,
+      "returnPct": 12.736797755084204,
+      "maxDrawdownPct": 13.017857524760018,
+      "sharpe": 0.2892673782096968,
+      "trades": 29
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "bb-reversion",
+      "name": "Bollinger mean reversion",
+      "pnl": 17018.814046913132,
+      "returnPct": 17.018814046913132,
+      "maxDrawdownPct": 8.115794994867134,
+      "sharpe": 0.5853479687784783,
+      "trades": 21
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "connors",
+      "name": "Connors RSI 4 pullback",
+      "pnl": 26314.575284456863,
+      "returnPct": 26.314575284456865,
+      "maxDrawdownPct": 9.436322721347876,
+      "sharpe": 0.8248276190987661,
+      "trades": 34
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "stochastic",
+      "name": "Stochastic oversold recovery",
+      "pnl": 19716.601960439395,
+      "returnPct": 19.716601960439395,
+      "maxDrawdownPct": 13.34727587237079,
+      "sharpe": 0.48357739190353155,
+      "trades": 28
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "cci",
+      "name": "CCI trend impulse",
+      "pnl": 22373.89389317842,
+      "returnPct": 22.373893893178423,
+      "maxDrawdownPct": 17.588754428922822,
+      "sharpe": 0.4280166717280468,
+      "trades": 36
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "williams",
+      "name": "Williams R recovery",
+      "pnl": 25357.831842048065,
+      "returnPct": 25.357831842048064,
+      "maxDrawdownPct": 12.3837612580005,
+      "sharpe": 0.5915675371280789,
+      "trades": 37
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "roc",
+      "name": "Rate-of-change momentum",
+      "pnl": 78621.1083704028,
+      "returnPct": 78.6211083704028,
+      "maxDrawdownPct": 17.83185910239075,
+      "sharpe": 0.9629877867568454,
+      "trades": 18
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "cmf",
+      "name": "Chaikin money flow trend",
+      "pnl": 36447.452653575834,
+      "returnPct": 36.44745265357584,
+      "maxDrawdownPct": 15.920912243794493,
+      "sharpe": 0.5783627562167251,
+      "trades": 52
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "mfi",
+      "name": "Money flow oversold",
+      "pnl": 30816.586994684345,
+      "returnPct": 30.816586994684346,
+      "maxDrawdownPct": 9.431861521035271,
+      "sharpe": 0.8551111729843591,
+      "trades": 3
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "keltner",
+      "name": "Keltner channel breakout",
+      "pnl": 23168.941751107268,
+      "returnPct": 23.16894175110727,
+      "maxDrawdownPct": 13.465335448753798,
+      "sharpe": 0.47095178840743257,
+      "trades": 22
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "aroon",
+      "name": "Aroon trend switch",
+      "pnl": 41341.65440268308,
+      "returnPct": 41.34165440268308,
+      "maxDrawdownPct": 19.17893731844144,
+      "sharpe": 0.6356694256229976,
+      "trades": 28
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "tsi",
+      "name": "True strength momentum",
+      "pnl": 76702.58116520022,
+      "returnPct": 76.70258116520021,
+      "maxDrawdownPct": 11.201192992354656,
+      "sharpe": 0.9775687953617549,
+      "trades": 20
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "ultimate",
+      "name": "Ultimate oscillator recovery",
+      "pnl": 9286.289582863028,
+      "returnPct": 9.286289582863027,
+      "maxDrawdownPct": 12.7055931630929,
+      "sharpe": 0.30684330653318875,
+      "trades": 4
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "stochrsi",
+      "name": "Stochastic RSI pullback",
+      "pnl": 18824.819384173228,
+      "returnPct": 18.824819384173228,
+      "maxDrawdownPct": 8.861606049444767,
+      "sharpe": 0.5977984689324074,
+      "trades": 31
+    },
+    {
+      "ticker": "GLD",
+      "window": "Later sample",
+      "from": "2021-01-01",
+      "to": "2026-01-01",
+      "id": "buy-hold",
+      "name": "Buy and hold (95%)",
+      "pnl": 111485.82651446841,
+      "returnPct": 111.48582651446841,
+      "maxDrawdownPct": 20.030139798320306,
+      "sharpe": 1.081456390103607,
+      "trades": 1
+    }
+  ]
+}
