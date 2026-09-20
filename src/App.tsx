@@ -1573,6 +1573,7 @@ export default function App() {
                     }
                   }}
                   blind={blind}
+                  syncPrimary
                   syncGroup={panels.length ? 'workspace' : undefined}
                   syncCrosshair={linked}
                   syncViewport={linkedRange}

@@ -36,6 +36,7 @@ export default defineConfig({
         '**/replay-follow.spec.ts',
         '**/comparison-price.spec.ts',
         '**/multi-comparison.spec.ts',
+        '**/multi-interval.spec.ts',
       ],
       use: {
         ...devices['iPhone 13'],

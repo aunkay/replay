@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import MarketChart from './MarketChart';
+import { panelMarketRequest } from '../lib/panelMarket';
 import { createWorkspaceId } from '../lib/workspaceId';
 import IndicatorMenu from './IndicatorMenu';
 import DrawingToolbar from './DrawingToolbar';
@@ -59,6 +60,7 @@ export default function AnalysisPanel({
   const [market, setMarket] = useState<MarketData | null>(null),
     [benchmarks, setBenchmarks] = useState<MarketData[]>([]),
     [error, setError] = useState(''),
+    [loading, setLoading] = useState(false),
     [tool, setTool] = useState<DrawingTool>('cursor'),
     [color, setColor] = useState('#b29aff'),
     [selection, setSelection] = useState<string | null>(null),
@@ -93,6 +95,11 @@ export default function AnalysisPanel({
   useEffect(() => {
     const controller = new AbortController();
     setError('');
+    setLoading(true);
+    if (!liveStreams) {
+      setMarket(null);
+      setBenchmarks([]);
+    }
     const load = async (ticker: string) => {
       const live = liveStreams?.find(
         (s) => s.ticker === ticker && s.interval === settings.interval,
@@ -105,27 +112,7 @@ export default function AnalysisPanel({
       )
         return session.market;
       return fetchMarketData(
-        {
-          ticker,
-          interval: settings.interval,
-          ...(session.market.request?.start
-            ? {
-                start: session.market.request.start,
-                end: session.market.request.end!,
-              }
-            : {
-                period:
-                  settings.interval === '1m'
-                    ? '5d'
-                    : ['2m', '5m', '15m', '30m', '90m'].includes(
-                          settings.interval,
-                        )
-                      ? '1mo'
-                      : settings.interval === '60m'
-                        ? '3mo'
-                        : '1y',
-              }),
-        },
+        panelMarketRequest(session.market, ticker, settings.interval),
         controller.signal,
       );
     };
@@ -137,7 +124,14 @@ export default function AnalysisPanel({
         }
       })
       .catch((e) => {
-        if (!controller.signal.aborted) setError(e.message);
+        if (!controller.signal.aborted) {
+          setMarket(null);
+          setBenchmarks([]);
+          setError(e.message);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
   }, [
@@ -147,16 +141,23 @@ export default function AnalysisPanel({
     session.market.ticker,
     session.market.interval,
     session.market.fetchedAt,
+    session.market.request?.start,
+    session.market.request?.end,
+    session.market.request?.period,
     liveStreams,
   ]);
   const bars = useMemo(
     () =>
-      market?.bars.filter((b, i, list) =>
+      (market?.ticker === settings.ticker &&
+      market.interval === settings.interval
+        ? market
+        : null
+      )?.bars.filter((b, i, list) =>
         liveStreams
           ? true
           : (b.endTime ?? list[i + 1]?.time ?? Infinity) <= clock,
       ) ?? [],
-    [market, clock, liveStreams],
+    [market, clock, liveStreams, settings.ticker, settings.interval],
   );
   const normalized = useMemo(
     () =>
@@ -177,6 +178,8 @@ export default function AnalysisPanel({
     <section
       className={`analysis-panel panel ${expanded ? 'analysis-expanded' : ''}`}
       id={`analysis-${settings.id}`}
+      data-panel-interval={settings.interval}
+      data-panel-candles={bars.length}
       aria-label={`Analysis chart ${settings.name ?? settings.id}`}
     >
       <header>
@@ -308,7 +311,16 @@ export default function AnalysisPanel({
             ))}
         </details>
       </div>
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <p className="analysis-empty" role="alert">
+          {error}
+        </p>
+      )}
+      {loading && !bars.length && (
+        <p role="status">
+          Loading {settings.ticker} · {settings.interval}…
+        </p>
+      )}
       {menu && (
         <div className="analysis-indicators">
           <IndicatorMenu
@@ -404,11 +416,14 @@ export default function AnalysisPanel({
           syncCrosshair={syncCrosshair}
           syncViewport={syncViewport}
         />
-      ) : (
-        <p className="analysis-empty">
-          No completed candles at the current replay time.
+      ) : !loading && !error ? (
+        <p className="analysis-empty" role="status">
+          No completed {settings.interval} candles at the current replay time.
+          {market?.bars.length
+            ? `${blind ? '' : ` Available history starts ${new Date(market.bars[0].time * 1000).toISOString().slice(0, 10)}.`} Advance the base replay into the available range, or load a more recent base chart. Each panel can use a different interval; future candles stay hidden.`
+            : ' Waiting for market data.'}
         </p>
-      )}
+      ) : null}
     </section>
   );
 }

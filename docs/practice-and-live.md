@@ -34,6 +34,8 @@ Select **Charts** above the workspace. Desktop layouts use two columns; three ch
 
 The main panel owns the traded instrument and replay clock. Analysis panels have their own interval, indicator instances, drawings, chart type, scale and comparisons. There are at most six unique symbols across the workspace and 24 live symbol/interval streams. Add comparison symbols from the main panel, then choose them in analysis panels. Crosshair and visible-range synchronization have separate toggles.
 
+Daily and intraday panels can run together (for example AAPL 1d/5m or 5m/2m). Each panel fetches its own supported interval range. Explicit long daily ranges are clipped to Yahoo’s available intraday history; entirely unavailable historical ranges show an explanation. If the replay clock is earlier than the intraday history, advance replay or load a recent base range—panels never substitute future candles. Changing interval clears stale data while loading. Linked zoom follows the chart you interact with and clips to the recipient’s available candles, preventing feedback between different candle grids.
+
 Higher-interval candles appear only after their completion time. Known exchanges use trading calendars, including session closes; unknown calendars conservatively use the next candle's timestamp. This can delay the newest candle when a reliable completion time is unavailable.
 
 ## Live mode

@@ -39,6 +39,11 @@ import BracketHandles from './BracketHandles';
 import DrawingLayer from './DrawingLayer';
 import { ComparisonAxisLabel } from './ComparisonAxisLabel';
 
+// Only the chart that owns the current gesture broadcasts viewport changes.
+// Library callbacks arrive on later animation frames, so a synchronous flag
+// cannot prevent two different candle grids from feeding ranges back forever.
+const viewportOwners = new Map<string, HTMLElement>();
+
 export type ChartComparison = {
   ticker: string;
   color: string;
@@ -55,11 +60,12 @@ interface MarketChartProps {
   comparisons: ChartComparison[];
   display: NormalizationContext;
   chartType: 'candles' | 'line';
-  onProtectionEdit?: (stop?:number,target?:number)=>void;
+  onProtectionEdit?: (stop?: number, target?: number) => void;
   blind?: boolean;
   syncGroup?: string;
   syncCrosshair?: boolean;
   syncViewport?: boolean;
+  syncPrimary?: boolean;
   onCrosshair?: (bar: Candle | null) => void;
   drawingTool: DrawingTool;
   drawings: Drawing[];
@@ -366,6 +372,7 @@ export default function MarketChart({
   syncGroup,
   syncCrosshair = true,
   syncViewport = true,
+  syncPrimary = false,
   drawingTool,
   drawings,
   onDrawingsChange,
@@ -578,6 +585,8 @@ export default function MarketChart({
     if (!instance) return;
     const { chart, candles, line, volume, candleMarkers, lineMarkers } =
       instance;
+    if (syncGroup && syncPrimary && containerRef.current)
+      viewportOwners.set(syncGroup, containerRef.current);
     const previous = previousBarsRef.current;
     const previousRange = chart.timeScale().getVisibleLogicalRange();
     const canAppend = isAppendedData(previous, bars);
@@ -1019,10 +1028,29 @@ export default function MarketChart({
 
   useEffect(() => {
     if (!ready || !syncGroup) return;
-    const source = containerRef.current;
+    const source = containerRef.current!;
+    if (syncPrimary) viewportOwners.set(syncGroup, source);
+    const claimViewport = () => {
+      if (syncViewport) {
+        viewportOwners.set(syncGroup, source);
+        window.dispatchEvent(
+          new CustomEvent('replay:range-request', {
+            detail: { group: syncGroup },
+          }),
+        );
+      }
+    };
+    source.addEventListener('pointerdown', claimViewport, {
+      capture: true,
+      passive: true,
+    });
+    source.addEventListener('wheel', claimViewport, {
+      capture: true,
+      passive: true,
+    });
     let applying = false;
     const crosshair = (event: MouseEventParams<Time>) => {
-      if (!applying && syncCrosshair)
+      if (!applying && syncCrosshair && event.sourceEvent)
         window.dispatchEvent(
           new CustomEvent('replay:chart-sync', {
             detail: { group: syncGroup, source, time: event.time },
@@ -1030,7 +1058,18 @@ export default function MarketChart({
         );
     };
     const range = (range: IRange<Time> | null) => {
-      if (!applying && range && syncViewport)
+      if (range) {
+        source.dataset.visibleTimeFrom = String(range.from);
+        source.dataset.visibleTimeTo = String(range.to);
+      }
+      if (!viewportOwners.has(syncGroup) && syncPrimary)
+        viewportOwners.set(syncGroup, source);
+      if (
+        !applying &&
+        range &&
+        syncViewport &&
+        viewportOwners.get(syncGroup) === source
+      )
         window.dispatchEvent(
           new CustomEvent('replay:range-sync', {
             detail: { group: syncGroup, source, range },
@@ -1040,19 +1079,51 @@ export default function MarketChart({
     const receive = (event: Event) => {
       const message = (event as CustomEvent).detail;
       if (message.group !== syncGroup || message.source === source) return;
-      if(message.range&&!syncViewport || !message.range&&!syncCrosshair)return;
+      if (
+        (message.range && !syncViewport) ||
+        (!message.range && !syncCrosshair)
+      )
+        return;
       applying = true;
       try {
-        if (message.range)
-          ready.chart.timeScale().setVisibleRange(message.range);
-        else if (message.time) {
-          const bar = barsByTimeRef.current.get(message.time);
+        if (message.range) {
+          const available = previousBarsRef.current;
+          if (!available.length) return;
+          const from = Math.max(Number(message.range.from), available[0].time);
+          const to = Math.min(Number(message.range.to), available.at(-1)!.time);
+          // Never scroll a recipient into an unavailable/future-only range.
+          if (Number.isFinite(from) && Number.isFinite(to) && from < to)
+            ready.chart
+              .timeScale()
+              .setVisibleRange({ from: timestamp(from), to: timestamp(to) });
+        } else if (message.time) {
+          const available = previousBarsRef.current;
+          // Resolve the candle containing this instant, rather than requiring
+          // identical 2m/5m opening timestamps. Do not cross session gaps.
+          let low = 0,
+            high = available.length - 1,
+            found = -1;
+          while (low <= high) {
+            const mid = (low + high) >>> 1;
+            if (available[mid].time <= message.time) {
+              found = mid;
+              low = mid + 1;
+            } else high = mid - 1;
+          }
+          const candidate = available[found];
+          const end = candidate?.endTime ?? available[found + 1]?.time;
+          const bar =
+            candidate &&
+            (candidate.time === message.time ||
+              (end !== undefined && message.time < end))
+              ? candidate
+              : undefined;
           const price =
             bar && normalizationValue(bar.close, displayRef.current);
           if (price !== null && price !== undefined)
             ready.chart.setCrosshairPosition(
               price,
-              message.time,
+              timestamp(bar!.time),
               ready.candles,
             );
           else ready.chart.clearCrosshairPosition();
@@ -1061,6 +1132,21 @@ export default function MarketChart({
         applying = false;
       }
     };
+    const requestedRange = (event: Event) => {
+      if ((event as CustomEvent).detail.group === syncGroup)
+        range(ready.chart.timeScale().getVisibleRange());
+    };
+    window.addEventListener('replay:range-request', requestedRange);
+    let initialRangeFrame = requestAnimationFrame(() => {
+      initialRangeFrame = requestAnimationFrame(() => {
+        if (syncViewport)
+          window.dispatchEvent(
+            new CustomEvent('replay:range-request', {
+              detail: { group: syncGroup },
+            }),
+          );
+      });
+    });
     ready.chart.subscribeCrosshairMove(crosshair);
     ready.chart.timeScale().subscribeVisibleTimeRangeChange(range);
     window.addEventListener('replay:chart-sync', receive);
@@ -1070,8 +1156,14 @@ export default function MarketChart({
       ready.chart.timeScale().unsubscribeVisibleTimeRangeChange(range);
       window.removeEventListener('replay:chart-sync', receive);
       window.removeEventListener('replay:range-sync', receive);
+      cancelAnimationFrame(initialRangeFrame);
+      window.removeEventListener('replay:range-request', requestedRange);
+      source.removeEventListener('pointerdown', claimViewport, true);
+      source.removeEventListener('wheel', claimViewport, true);
+      if (viewportOwners.get(syncGroup) === source)
+        viewportOwners.delete(syncGroup);
     };
-  }, [ready, syncGroup, syncCrosshair, syncViewport]);
+  }, [ready, syncGroup, syncCrosshair, syncViewport, syncPrimary]);
 
   useEffect(() => {
     if (!ready) return;
@@ -1129,7 +1221,17 @@ export default function MarketChart({
         aria-label="Interactive historical price chart with executed trade markers"
         style={{ position: 'absolute', inset: 0 }}
       />
-      {ready && onProtectionEdit && orders.some(o=>o.reduceOnly&&o.status==='pending') && <BracketHandles chart={ready.chart} series={chartType==='candles'?ready.candles:ready.line} orders={orders} display={display} onChange={onProtectionEdit}/>}
+      {ready &&
+        onProtectionEdit &&
+        orders.some((o) => o.reduceOnly && o.status === 'pending') && (
+          <BracketHandles
+            chart={ready.chart}
+            series={chartType === 'candles' ? ready.candles : ready.line}
+            orders={orders}
+            display={display}
+            onChange={onProtectionEdit}
+          />
+        )}
       {showVolume && volumeTooltip && (
         <div
           role="tooltip"
