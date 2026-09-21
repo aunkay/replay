@@ -20,7 +20,7 @@ def persist(session):
     if not session.get('session'): return
     import json
     snapshot=copy.deepcopy(session['session']);snapshot['mode']='live'
-    payload=json.dumps({'session':snapshot,'live':{'active':False,'gap':True,'streams':[{'ticker':key[0],'interval':key[1]} for key in session['keys']],'pending':session['pending']}})
+    payload=json.dumps({'session':snapshot,'live':{'active':session['active'],'gap':session['gap'],'background':session.get('background',False),'resumeAfter':session.get('resumeAfter',0),'controller':session.get('controller'),'error':session.get('error'),'streams':[{'ticker':key[0],'interval':key[1]} for key in session['keys']],'pending':session['pending']}})
     with db() as conn:
         conn.execute('INSERT INTO sessions(id,name,revision,payload,updated) VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,revision=sessions.revision+1,updated=excluded.updated',(session['id'],f"Live {session['keys'][0][0]}",1,payload,time.time()))
 
@@ -34,8 +34,8 @@ def _loop():
         now=time.time()
         with _lock:
             for session in _sessions.values():
-                if session['active'] and not any(expiry>now for expiry in session['leases'].values()):
-                    session['active']=False;session['gap']=True
+                if session['active'] and not session.get('background') and not any(expiry>now for expiry in session['leases'].values()):
+                    session['active']=False;session['gap']=True;persist(session)
             wanted={k for session in _sessions.values() if session['active'] for k in session['keys']}
             due=[k for k in wanted if _streams[k]['nextAttempt']<=now and not _streams[k].get('permanent')]
             if not due: continue
@@ -53,7 +53,8 @@ def _loop():
                     incompatible=len(ratios)>=3 and sum(abs(r-1)>.1 for r in ratios)>=len(ratios)*.8
                     if incompatible:
                         for session in _sessions.values():
-                            if session['keys'][0]==key: session.update(active=False,gap=True,error='Adjusted price history changed substantially. Start a new live baseline.')
+                            if session['keys'][0]==key:
+                                session.update(active=False,gap=True,error='Adjusted price history changed substantially. Start a new live baseline.');persist(session)
                         stream.update(status='error',error='Adjusted price baseline changed',permanent=True)
                         continue
                     merged={b['time']:b for b in previous['bars']}
@@ -65,7 +66,7 @@ def _loop():
                         # A rolling window that no longer overlaps the execution snapshot
                         # cannot prove that all missed candles were accounted for.
                         if fresh_start and fresh_start>last and fresh_start>session.get('resumeAfter',0) and not session.get('gap'):
-                            session.update(active=False,gap=True,error='The missing history exceeds the provider window. Acknowledge the monitoring gap before resuming.')
+                            session.update(active=False,gap=True,error='The missing history exceeds the provider window. Acknowledge the monitoring gap before resuming.');persist(session)
                 stream.update(market=market,status='current',lastSuccess=time.time(),error=None,failures=0)
                 for session in _sessions.values():
                     if not session['active'] or tuple(session['keys'][0])!=key: continue
@@ -86,6 +87,53 @@ def _loop():
                 delay=min(900,30*2**min(stream['failures']-1,5))
                 if code==429: delay=max(delay,(provider_status()['retryAt'] or 0)-time.time())
                 stream['nextAttempt']=time.time()+delay
+
+def recover_background():
+    """Recover only explicitly opted-in active monitors. Ordinary Live stays off."""
+    global _started
+    import json
+    with _lock:
+        with db() as conn:
+            rows=conn.execute('SELECT id,revision,payload FROM sessions').fetchall()
+        for row in rows:
+            payload=json.loads(row['payload']);saved=payload.get('live',{})
+            if not saved.get('background') or row['id'] in _sessions: continue
+            keys=[stream_key(s['ticker'],s['interval']) for s in saved['streams']]
+            account=payload['session']
+            for key in keys:
+                _streams.setdefault(key,{'ticker':key[0],'interval':key[1],'nextAttempt':time.time(),'status':'queued'})
+            # Keep original eligibility times. Fetch overlap before processing
+            # missed completed bars; the loop pauses if coverage cannot be proven.
+            pending=saved.get('pending',[])
+            _sessions[row['id']]={'id':row['id'],'keys':keys,'active':bool(saved.get('active')),'background':True,'gap':bool(saved.get('gap')),'error':saved.get('error'),'leases':{},'config':account['account']['config'],'session':account,'pending':pending,'commands':{p['key']:True for p in pending},'revision':row['revision'],'controller':saved.get('controller'),'resumeAfter':saved.get('resumeAfter',0)}
+        if _sessions and not _started:
+            _started=True;threading.Thread(target=_loop,daemon=True,name='replay-live').start()
+
+@router.get('')
+def list_background():
+    with _lock:
+        return [{'id':s['id'],'ticker':s['keys'][0][0],'interval':s['keys'][0][1],'active':s['active'],'gap':s['gap'],'error':s.get('error'),'events':len((s.get('session') or {}).get('alertEvents',[]))} for s in _sessions.values() if s.get('background')]
+
+@router.put('/{id}/background')
+def background(id:str,body:dict=Body(...)):
+    with _lock:
+        session=lookup(id)
+        if body.get('client')!=session['controller']: raise HTTPException(409,'Only the controller can change background monitoring')
+        if not isinstance(body.get('enabled'),bool): raise HTTPException(422,'Choose enabled or disabled')
+        if not session.get('session'): raise HTTPException(409,'Wait for the first completed candle before enabling background monitoring')
+        if body['enabled'] and not session['active']: raise HTTPException(409,'Acknowledge the monitoring gap before enabling background monitoring')
+        session['background']=body['enabled'];session['revision']+=1;persist(session)
+        return snapshot(session)
+
+@router.post('/{id}/connect')
+def connect(id:str,body:dict=Body(...)):
+    client=str(body.get('client','')).strip()
+    if not client: raise HTTPException(422,'Client required')
+    with _lock:
+        session=lookup(id)
+        if not session.get('background'): raise HTTPException(409,'This monitor is not running in the background')
+        session['controller']=client;session['leases'][client]=time.time()+60;session['revision']+=1;persist(session)
+        return snapshot(session)
 
 @router.post('')
 def enable(body:dict=Body(...)):
@@ -144,12 +192,13 @@ def resume(id:str,body:dict=Body(...)):
     with _lock:
         session=lookup(id);session.update(active=True,gap=False,resumeAfter=time.time(),leases={str(body['client']):time.time()+60})
         for key in session['keys']: _streams[key]['nextAttempt']=time.time()
+        persist(session)
         return snapshot(session)
 
 @router.delete('/{id}')
 def stop(id:str):
     with _lock:
-        session=lookup(id);session['active']=False;persist(session)
+        session=lookup(id);session['active']=False;session['background']=False;persist(session)
     return {'active':False}
 
 @router.post('/{id}/orders')

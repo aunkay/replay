@@ -1,3 +1,4 @@
+import BackgroundMonitors from './components/BackgroundMonitors';
 import { advanceReplay, alertCommand, type AlertCommand } from './lib/alerts';
 import Alerts from './components/Alerts';
 import { applyCheckpoint, type CheckpointCommand } from './lib/checkpoints';
@@ -1063,6 +1064,16 @@ export default function App() {
             </div>
           </div>
 
+          {!live.active && !blind && (
+            <BackgroundMonitors
+              onConnect={async (id) => {
+                setPlaying(false);
+                replayLibrary.current = library.record?.id ?? null;
+                const connected = await live.connect(id);
+                if (connected) library.detach();
+              }}
+            />
+          )}
           <div className="workspace-tools">
             {!blind && (
               <Alerts
@@ -1204,6 +1215,20 @@ export default function App() {
           {live.active && (
             <section className="live-status" aria-label="Live update status">
               <strong>Live · completed-bar paper trading</strong>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={Boolean(live.state?.background)}
+                  disabled={live.busy || !live.state?.session}
+                  onChange={(e) => void live.background(e.target.checked)}
+                />
+                Keep monitoring when browser closes
+              </label>
+              <span>
+                {live.state?.background
+                  ? 'Background monitoring is on. Polling, paper orders and alerts continue on the server, including after restart. Turn off Live to stop this monitor.'
+                  : 'Background monitoring is off. Monitoring pauses when all browser leases expire.'}
+              </span>
               <button onClick={() => void live.refresh()}>Refresh now</button>
               {live.state?.pendingOrders?.map((p: any) => (
                 <span key={p.key}>

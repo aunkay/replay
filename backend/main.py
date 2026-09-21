@@ -307,3 +307,8 @@ if dist.is_dir() and (dist / "index.html").is_file():
         if candidate.is_relative_to(dist) and candidate.is_file():
             return FileResponse(candidate)
         return FileResponse(dist / "index.html")
+
+@app.on_event("startup")
+def resume_background_monitors():
+    from backend.live import recover_background
+    recover_background()

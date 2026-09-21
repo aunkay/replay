@@ -47,7 +47,9 @@ def test_import_fingerprint_and_image_validation(client):
     a=client.post('/api/sessions',json=body).json();b=client.post('/api/sessions',json=body).json();assert a['id']==b['id']
     assert client.post(f"/api/sessions/{a['id']}/attachments",content=b'<svg/>').status_code==422
 
-def test_provider_spacing_and_backoff(monkeypatch):
+def test_provider_spacing_and_backoff(monkeypatch,tmp_path):
+    monkeypatch.setenv("REPLAY_DATA_DIR",str(tmp_path))
+    monkeypatch.setattr(provider,"_loaded",False)
     monkeypatch.delenv('REPLAY_E2E',raising=False)
     monkeypatch.setattr(provider,'_last_start',0);monkeypatch.setattr(provider,'_until',0);monkeypatch.setattr(provider,'_streak',0)
     clock=[100.0]
@@ -134,3 +136,23 @@ def test_journal_roundtrip_preserves_server_identity(client):
     assert client.get(f'/api/sessions/{session}/journal').json()[0]['notes']=='Edited note'
     assert client.put(path,json={**note,'tradeId':'different-trade'}).status_code==200
     assert client.get(f'/api/sessions/{session}/journal').json()[0]['tradeId']=='trade-1'
+
+def test_background_opt_in_restart_and_stop(client,monkeypatch):
+    monkeypatch.setattr(live,'_started',True)
+    monkeypatch.setattr(live,'_sessions',{})
+    monkeypatch.setattr(live,'_streams',{})
+    session={'mode':'live','account':{'config':{'initialCapital':1000,'commissionBps':0,'slippageBps':0},'orders':[]},'cursor':0,'market':{'bars':[{'time':100}]},'alertEvents':[{'name':'test'}]}
+    response=client.post('/api/live',json={'client':'owner','config':session['account']['config'],'streams':[{'ticker':'AAPL','interval':'1m'}]})
+    id=response.json()['id'];live._sessions[id]['session']=session
+    assert client.put(f'/api/live/{id}/background',json={'client':'wrong','enabled':True}).status_code==409
+    result=client.put(f'/api/live/{id}/background',json={'client':'owner','enabled':True})
+    assert result.status_code==200 and result.json()['background'] is True
+    live._sessions.clear();live._streams.clear();live.recover_background()
+    recovered=client.get(f'/api/live/{id}').json()
+    assert recovered['background'] and recovered['active']
+    assert recovered['session']==session
+    assert client.get('/api/live').json()[0]['events']==1
+    assert client.post(f'/api/live/{id}/connect',json={'client':'new'}).json()['controller']=='new'
+    assert client.delete(f'/api/live/{id}').status_code==200
+    live._sessions.clear();live.recover_background()
+    assert client.get('/api/live').json()==[]

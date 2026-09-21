@@ -15,9 +15,14 @@ export function useLive(
     replay = useRef<StoredSession | null>(null),
     restoring = useRef(restore);
   restoring.current = restore;
+  const preserveConnectedStreams = useRef(false);
   const id = state?.id;
   const streamSignature = JSON.stringify(streams);
   useEffect(() => {
+    if (preserveConnectedStreams.current) {
+      preserveConnectedStreams.current = false;
+      return;
+    }
     if (id)
       api(`/live/${id}/streams`, { client, streams }, 'PUT').catch((e) =>
         setError(e.message),
@@ -92,6 +97,34 @@ export function useLive(
       setBusy(false);
     }
   }
+  async function connect(monitorId: string) {
+    setBusy(true);
+    try {
+      const next = await api(`/live/${monitorId}/connect`, { client });
+      replay.current = session;
+      preserveConnectedStreams.current = true;
+      if (next.session) restore(next.session);
+      setState(next);
+      setError('');
+      return true;
+    } catch (e) {
+      setError((e as Error).message);
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function background(enabled: boolean) {
+    setBusy(true);
+    try {
+      setState(await api(`/live/${id}/background`, { client, enabled }, 'PUT'));
+      setError('');
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   async function command(command: unknown) {
     if (!id) return false;
     await api(`/live/${id}/orders`, {
@@ -122,6 +155,8 @@ export function useLive(
     busy,
     active: !!id,
     toggle,
+    connect,
+    background,
     command,
     resume,
     refresh,

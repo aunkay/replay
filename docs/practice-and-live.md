@@ -56,7 +56,7 @@ Higher-interval candles appear only after their completion time. Known exchanges
 
 ## Live mode
 
-**Live is off by default**, including after reload, session restore and server restart. Clicking Live starts a separate paper account; clicking it again returns to the previous replay account. Saved live accounts can be resumed from the library by explicitly enabling Live.
+**Live is off by default** in the browser, including after reload and session restore. Server monitoring also stays off after restart unless you explicitly enabled background monitoring. Clicking Live starts a separate paper account; clicking it again returns to the previous replay account. Saved live accounts can be resumed from the library by explicitly enabling Live.
 
 The server shares streams by symbol and interval. Poll cadence is half the interval: 1m every 30 seconds, 5m every 150 seconds, 1d every 12 hours. Monthly cadences use calendar-month duration. Provider jobs run serially with at least three seconds between starts, including historical cache misses. Six due symbols are therefore spread across roughly an 18-second polling cycle, plus provider latency. Clients receive events instead of independently polling Yahoo.
 
@@ -64,7 +64,13 @@ A provider 429/throttle response applies a shared cooldown: 30, 60, 120, 240, 48
 
 Provisional candles can appear on charts, but never execute orders. Live market commands execute at the next observed completed candle's close. Limit/stop orders submitted during a candle become eligible on subsequent candles, so earlier highs/lows cannot create retrospective fills. Existing pending orders can be cancelled immediately; bracket edits apply on a completed-candle boundary. Live order status exposes queued commands, including cancellation before they execute.
 
-Visible clients renew a 60-second lease every 15 seconds. When every client disconnects or remains hidden long enough, monitoring pauses. Explicit resume acknowledges the gap and marks skipped history without retrospective fills. Recoverable provider outages process completed candles chronologically; missing history outside the provider's window requires gap acknowledgement. Substantial adjusted-history changes pause the account for a new baseline. Yahoo is a polling data source, not a guaranteed real-time exchange feed.
+Visible clients renew a 60-second lease every 15 seconds. When every client disconnects or remains hidden long enough, monitoring pauses unless background monitoring is enabled. Explicit resume acknowledges the gap and marks skipped history without retrospective fills. Recoverable provider outages process completed candles chronologically; missing history outside the provider's window requires gap acknowledgement. Substantial adjusted-history changes pause the account for a new baseline. Yahoo is a polling data source, not a guaranteed real-time exchange feed.
+
+## Background Live monitoring
+
+Once Live has loaded, enable **Keep monitoring when browser closes** to opt this account into browser-independent monitoring. The server continues the same spaced provider polling, closed-candle paper execution and alert recording after the last browser disconnects. This choice is saved to disk. On server restart, opted-in active monitors recover their account and pending commands, then process missed completed candles only when provider history overlaps the last recorded candle. Missing coverage or substantially revised price history pauses the monitor for review.
+
+The main workspace lists **Background live monitors** when you are outside Live. **Connect to monitor** takes control of that existing account and displays its alert history. It does not create a duplicate monitor. **Stop monitor**, or turning off Live while connected, disables monitoring and its automatic restart. You can also uncheck the background option to return to browser-lease behavior. Alerts are recorded on the server; these controls do not enable OS push notifications.
 
 ## Visual strategies and parameter searches
 

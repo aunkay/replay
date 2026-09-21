@@ -17,7 +17,7 @@ sessions and strategy flows must remain compatible.
 | Data library / CSV | Server-persisted datasets, validated CSV import, missing-candle inspection, reusable data selection | Pending |
 | Multi-timeframe rules | Per-rule interval selection; only completed higher-timeframe values at signal time | Pending |
 | Extended hours | Request/cache/session support; explicit inclusion control; session chart shading | Pending |
-| Background Live | Explicit persisted server monitoring opt-in, browser-independent operation and alert history, safe restart/reconnect | Pending |
+| Background Live | Explicit persisted server monitoring opt-in, browser-independent operation and alert history, safe restart/reconnect | Implemented; restart recovery API test and desktop/iPhone disconnect-alert-reconnect journeys pass |
 
 ## Verification and release
 
@@ -36,3 +36,5 @@ Protection implementation uses completed-close trailing updates and a 14-period 
 Latest checks: 359 unit tests pass; build and E2E TypeScript checks pass. Both added browser journeys pass on desktop and iPhone (four cases total). These checks do not establish completion of the full eleven-feature scope.
 
 Alerts evidence: six desktop/iPhone journeys pass for local/server pause and history persistence, rearm, indicator rules and template loading. Shared rule evaluator, causal seek stopping and completed-bar Live evaluation have unit coverage. Checkpoints now include alert definitions/history.
+
+Background evidence: backend restart/recovery/stop test passes; desktop/iPhone journeys close the browser, expire its lease, advance provider data, observe a persisted alert, reconnect and stop the monitor. Opt-in metadata and original pending-command eligibility survive restart.
