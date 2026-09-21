@@ -148,6 +148,8 @@ export function isValidSession(value: unknown): value is StoredSession {
   }
   const currentTime = value.market.bars[value.cursor].time;
   const account = value.account;
+  // This context is computed by the portfolio engine, never trusted from storage.
+  if (account.capitalContext !== undefined) return false;
   if (!validDynamic(account.dynamicProtection)) return false;
   if (
     account.recentBars !== undefined &&

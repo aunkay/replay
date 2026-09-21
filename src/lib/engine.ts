@@ -66,6 +66,8 @@ export type Position = { quantity: number; averagePrice: number };
 export type EquityPoint = { time: number; equity: number };
 export type TradingState = {
   config: EngineConfig;
+  /** Transient portfolio capital context; supplied by the portfolio engine. */
+  capitalContext?: { marketValue: number; exposure: number };
   cash: number;
   position: Position;
   orders: Order[];
@@ -240,8 +242,10 @@ function executeFill(
   const cash = state.cash - signedQuantity * fillPrice - fee;
   // Mark at the execution price for the 1x exposure check. Short proceeds do
   // not grant extra buying power: equity remains cash + signed market value.
-  const equityAtFill = cash + quantity * fillPrice;
-  const exposureAtFill = Math.abs(quantity) * fillPrice;
+  const equityAtFill =
+    cash + quantity * fillPrice + (state.capitalContext?.marketValue ?? 0);
+  const exposureAtFill =
+    Math.abs(quantity) * fillPrice + (state.capitalContext?.exposure ?? 0);
   if (
     ![
       fillPrice,
