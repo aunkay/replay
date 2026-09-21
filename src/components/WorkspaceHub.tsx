@@ -1,3 +1,5 @@
+import Checkpoints from './Checkpoints';
+import type { CheckpointCommand } from '../lib/checkpoints';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { StoredSession } from '../lib/session';
 import { api, type useServerSession } from '../lib/server';
@@ -108,11 +110,13 @@ export default function WorkspaceHub({
   library,
   onPause,
   onBlind,
+  onCheckpoint,
 }: {
   session: StoredSession;
   library: ReturnType<typeof useServerSession>;
   onPause: () => void;
   onBlind: (count: number) => void;
+  onCheckpoint: (command: CheckpointCommand) => Promise<void>;
 }) {
   const [open, setOpen] = useState(false),
     [tab, setTab] = useState('sessions'),
@@ -488,11 +492,18 @@ export default function WorkspaceHub({
                   </p>
                 )}
                 {tab === 'sessions' && (
-                  <SessionLibrary
-                    session={session}
-                    library={library}
-                    onClose={() => setOpen(false)}
-                  />
+                  <>
+                    <Checkpoints
+                      session={session}
+                      onCommand={onCheckpoint}
+                      server={Boolean(library.record)}
+                    />
+                    <SessionLibrary
+                      session={session}
+                      library={library}
+                      onClose={() => setOpen(false)}
+                    />
+                  </>
                 )}
                 {tab === 'journal' && (
                   <>

@@ -2,12 +2,19 @@ import { isValidMarketData, type MarketData } from './data';
 import type { TradingState } from './engine';
 
 export type StoredSession = {
-  mode?: 'replay'|'blind'|'live';
+  mode?: 'replay' | 'blind' | 'live';
   blind?: { seed: number; end: number; finished: boolean };
   market: MarketData;
   cursor: number;
   startCursor: number;
   account: TradingState;
+  checkpoints?: {
+    id: string;
+    name: string;
+    cursor: number;
+    startCursor: number;
+    account: TradingState;
+  }[];
 };
 
 type RecordValue = Record<string, unknown>;
@@ -34,10 +41,17 @@ const timestamp = (value: unknown): value is number =>
 function validDynamic(value: unknown): boolean {
   if (value === undefined) return true;
   if (!record(value)) return false;
-  if (value.breakEvenPct !== undefined && !positive(value.breakEvenPct)) return false;
+  if (value.breakEvenPct !== undefined && !positive(value.breakEvenPct))
+    return false;
   if (value.trailing !== undefined) {
     const t = value.trailing;
-    if (!record(t) || !['price','percent','atr'].includes(String(t.mode)) || !positive(t.distance) || (t.mode === 'percent' && t.distance >= 100)) return false;
+    if (
+      !record(t) ||
+      !['price', 'percent', 'atr'].includes(String(t.mode)) ||
+      !positive(t.distance) ||
+      (t.mode === 'percent' && t.distance >= 100)
+    )
+      return false;
   }
   return true;
 }
@@ -58,10 +72,50 @@ export function isValidSession(value: unknown): value is StoredSession {
   )
     return false;
 
+  if (value.checkpoints !== undefined) {
+    if (!Array.isArray(value.checkpoints) || value.checkpoints.length > 20)
+      return false;
+    const checkpointIds = new Set<string>();
+    for (const c of value.checkpoints) {
+      if (
+        !record(c) ||
+        !nonemptyText(c.id) ||
+        c.id.length > 100 ||
+        checkpointIds.has(c.id) ||
+        !nonemptyText(c.name) ||
+        c.name.length > 100
+      )
+        return false;
+      checkpointIds.add(c.id);
+      if (
+        !isValidSession({
+          market: value.market,
+          cursor: c.cursor,
+          startCursor: c.startCursor,
+          account: c.account,
+        })
+      )
+        return false;
+    }
+  }
   const currentTime = value.market.bars[value.cursor].time;
   const account = value.account;
   if (!validDynamic(account.dynamicProtection)) return false;
-  if (account.recentBars !== undefined && (!Array.isArray(account.recentBars) || account.recentBars.length > 15 || account.recentBars.some(b => !record(b) || !timestamp(b.time) || b.time > currentTime || !positive(b.high) || !positive(b.low) || !positive(b.close)))) return false;
+  if (
+    account.recentBars !== undefined &&
+    (!Array.isArray(account.recentBars) ||
+      account.recentBars.length > 15 ||
+      account.recentBars.some(
+        (b) =>
+          !record(b) ||
+          !timestamp(b.time) ||
+          b.time > currentTime ||
+          !positive(b.high) ||
+          !positive(b.low) ||
+          !positive(b.close),
+      ))
+  )
+    return false;
   const config = account.config;
   const position = account.position;
   if (
@@ -119,13 +173,23 @@ export function isValidSession(value: unknown): value is StoredSession {
       return false;
     if (!validDynamic(order.dynamicProtection)) return false;
     if (order.takeProfits !== undefined) {
-      if (!Array.isArray(order.takeProfits) || order.takeProfits.length > 3 ||
-          (order.takeProfits.length > 0 && order.takeProfit !== undefined)) return false;
+      if (
+        !Array.isArray(order.takeProfits) ||
+        order.takeProfits.length > 3 ||
+        (order.takeProfits.length > 0 && order.takeProfit !== undefined)
+      )
+        return false;
       let allocation = 0;
       const prices = new Set<number>();
       for (const target of order.takeProfits) {
-        if (!record(target) || !positive(target.price) || !positive(target.percent) ||
-            target.percent > 100 || prices.has(target.price)) return false;
+        if (
+          !record(target) ||
+          !positive(target.price) ||
+          !positive(target.percent) ||
+          target.percent > 100 ||
+          prices.has(target.price)
+        )
+          return false;
         prices.add(target.price);
         allocation += target.percent;
       }
@@ -142,7 +206,9 @@ export function isValidSession(value: unknown): value is StoredSession {
       if (
         !accountTime(order.filledAt) ||
         order.filledAt < order.createdAt ||
-        (order.type !== 'market' && !order.reduceOnly && order.filledAt <= order.createdAt) ||
+        (order.type !== 'market' &&
+          !order.reduceOnly &&
+          order.filledAt <= order.createdAt) ||
         !positive(order.fillPrice) ||
         !nonnegative(order.fee)
       )

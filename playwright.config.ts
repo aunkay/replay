@@ -33,6 +33,7 @@ export default defineConfig({
         '**/volume.spec.ts',
         '**/practice.spec.ts',
         '**/advanced-trading.spec.ts',
+        '**/checkpoints.spec.ts',
         '**/insecure-origin.spec.ts',
         '**/replay-follow.spec.ts',
         '**/comparison-price.spec.ts',

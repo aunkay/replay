@@ -9,7 +9,7 @@ sessions and strategy flows must remain compatible.
 | --- | --- | --- |
 | Trailing stops / break-even | Price, percent and ATR trailing; configurable break-even activation; prospective updates for long/short positions | Engine and ticket implemented; desktop/iPhone replay and reload tests pass; broader integration pending |
 | Multiple take profits | Up to three price/percentage allocations; remaining position stays protected; conservative ambiguous-bar execution | Engine and ticket implemented; desktop/iPhone reload journey passes; broader saved/Live coverage pending |
-| Bookmarks / checkpoints | Name, save, restore and retry replay with exact account state; dataset identity and saved-session handling | Pending |
+| Bookmarks / checkpoints | Name, save, restore and retry replay with exact account state; dataset identity and saved-session handling | Implemented; desktop/iPhone browser and server retry/reload journeys pass |
 | Alerts | Price crossings, indicator crossings, strategy conditions; notifications and optional replay pause; no future data | Pending |
 | Portfolio trading | Trade base and comparisons using shared cash, buying power, positions and portfolio P&L | Pending |
 | Strategy validation | Rolling train/test windows, parameter heatmaps, reproducible Monte Carlo distributions | Pending |

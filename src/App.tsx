@@ -1,3 +1,4 @@
+import { applyCheckpoint, type CheckpointCommand } from './lib/checkpoints';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
@@ -66,7 +67,6 @@ import {
   type EngineConfig,
   type OrderType,
   type Side,
-  type TradingState,
 } from './lib/engine';
 import { isValidSession } from './lib/session';
 import {
@@ -79,14 +79,7 @@ import {
   type MarketData,
 } from './lib/data';
 
-type Session = {
-  mode?: 'replay' | 'blind' | 'live';
-  blind?: { seed: number; end: number; finished: boolean };
-  market: MarketData;
-  cursor: number;
-  startCursor: number;
-  account: TradingState;
-};
+type Session = import('./lib/session').StoredSession;
 type Dialog =
   'data' | 'settings' | 'help' | 'reset' | 'indicators' | 'compare' | null;
 const STORAGE_KEY = 'replay-market-lab:v1';
@@ -1073,6 +1066,24 @@ export default function App() {
                 library={library}
                 onPause={() => setPlaying(false)}
                 onBlind={startBlind}
+                onCheckpoint={async (command: CheckpointCommand) => {
+                  setPlaying(false);
+                  if (library.record && command.action !== 'restore') {
+                    await library.command(command);
+                  } else {
+                    const next = applyCheckpoint(session, command);
+                    if (library.record) {
+                      const name = session.checkpoints?.find(
+                        (c) => c.id === command.id,
+                      )?.name;
+                      await library.save(`${name} · retry`, next);
+                    } else setSession(next);
+                  }
+                  setHoverBar(null);
+                  window.requestAnimationFrame(() =>
+                    window.dispatchEvent(new Event('replay:follow')),
+                  );
+                }}
               />
             )}
             {!blind && (
@@ -1578,7 +1589,9 @@ export default function App() {
                   }}
                   blind={blind}
                   syncPrimary
-                  syncClock={bar.endTime ?? market.bars[cursor + 1]?.time ?? bar.time}
+                  syncClock={
+                    bar.endTime ?? market.bars[cursor + 1]?.time ?? bar.time
+                  }
                   syncGroup={panels.length ? 'workspace' : undefined}
                   syncCrosshair={linked}
                   syncViewport={linkedRange}

@@ -1,3 +1,4 @@
+import {applyCheckpoint} from '../src/lib/checkpoints';
 import { initializeLive, applyLiveTick } from '../src/lib/liveEngine';
 import { createServer } from 'node:http';
 import {
@@ -144,7 +145,10 @@ if (!isMainThread) {
         const bar = session.market.bars[session.cursor];
         if (!bar || !session.account) throw new Error('Invalid session');
         let next = { ...session };
-        if (command.type === 'order')
+        if (command.type === 'checkpoint') {
+          if (command.action === 'restore') throw new Error('Restore checkpoints into a new session to preserve the original journal.');
+          next = applyCheckpoint(session, command);
+        } else if (command.type === 'order')
           next.account = submitOrder(session.account, command.order, bar);
         else if (command.type === 'cancel')
           next.account = cancelOrder(session.account, command.id);

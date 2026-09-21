@@ -14,6 +14,12 @@ Filled entries can create reduce-only stop and target children. They protect the
 
 Candle OHLC cannot reveal the path inside a candle. If both exits are touched, the simulator uses the stop first and flags ambiguity. Gap-through stops fill at the opening price with configured costs. An intrabar pending entry can hit its stop on the same candle; its target cannot fill on that candle unless the entry occurred at the open. Edits apply prospectively. Market orders in manual replay fill at the revealed close.
 
+## Replay bookmarks and checkpoints
+
+In **Practice & research → Sessions**, enter a checkpoint name and choose **Save checkpoint** before trying a trade. A checkpoint stores the current replay candle and exact account state, including cash, positions, pending orders and protective rules. **Restore checkpoint** pauses playback and returns to that state. Checkpoints are bound to the session dataset; a new dataset starts a new set. Each session supports up to 20 checkpoints.
+
+Browser checkpoints persist on reload and are included when saving the session to the server or exporting its ZIP. Restoring a server checkpoint creates a separate saved retry session, preserving the original attempt and journal. Journal notes are not copied into the retry. Checkpoints are unavailable in Live and blind exercises. Delete a checkpoint when it is no longer needed.
+
 ## Saved sessions and journal
 
 Save a named session to place it in the server library. Saved accounts and chart preferences are automatically updated. Search active or archived sessions and use **Resume** to continue. Open the session’s **More actions** menu to rename, duplicate, archive, export or delete it. Renaming happens beside the selected session; deletion has an inline confirmation. Import controls are grouped under **Import & browser storage**. ZIP export includes its snapshot, notes and attached chart images; import creates a separate session. **Import existing browser session** migrates the current local workspace, with duplicate-import protection.
