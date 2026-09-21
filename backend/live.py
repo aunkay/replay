@@ -14,13 +14,13 @@ _streams={}
 _sessions={}
 _started=False
 
-def stream_key(ticker,interval): return (ticker.upper(),'60m' if interval=='1h' else interval)
+def stream_key(ticker,interval,extended=False): return (ticker.upper(),'60m' if interval=='1h' else interval,bool(extended))
 
 def persist(session):
     if not session.get('session'): return
     import json
     snapshot=copy.deepcopy(session['session']);snapshot['mode']='live'
-    payload=json.dumps({'session':snapshot,'live':{'active':session['active'],'gap':session['gap'],'background':session.get('background',False),'resumeAfter':session.get('resumeAfter',0),'controller':session.get('controller'),'error':session.get('error'),'streams':[{'ticker':key[0],'interval':key[1]} for key in session['keys']],'pending':session['pending']}})
+    payload=json.dumps({'session':snapshot,'live':{'active':session['active'],'gap':session['gap'],'background':session.get('background',False),'resumeAfter':session.get('resumeAfter',0),'controller':session.get('controller'),'error':session.get('error'),'streams':[{'ticker':key[0],'interval':key[1],'extendedHours':key[2]} for key in session['keys']],'pending':session['pending']}})
     with db() as conn:
         conn.execute('INSERT INTO sessions(id,name,revision,payload,updated) VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,revision=sessions.revision+1,updated=excluded.updated',(session['id'],f"Live {session['keys'][0][0]}",1,payload,time.time()))
 
@@ -43,7 +43,8 @@ def _loop():
             stream=_streams[key];stream['lastAttempt']=now;stream['nextAttempt']=now+cadence(key[1]);stream['status']='fetching'
         try:
             interval=key[1];period='5d' if interval=='1m' else '1mo' if interval in ['2m','5m','15m','30m','90m'] else '3mo' if interval=='60m' else '1y'
-            market=_load_market_data(validate_request(key[0],interval,period,None,None),live=True).model_dump()
+            from dataclasses import replace
+            market=_load_market_data(replace(validate_request(key[0],interval,period,None,None),extended_hours=key[2]),live=True).model_dump()
             with _lock:
                 fresh_start=market['bars'][0]['time'] if market['bars'] else None
                 previous=stream.get('market')
@@ -98,10 +99,10 @@ def recover_background():
         for row in rows:
             payload=json.loads(row['payload']);saved=payload.get('live',{})
             if not saved.get('background') or row['id'] in _sessions: continue
-            keys=[stream_key(s['ticker'],s['interval']) for s in saved['streams']]
+            keys=[stream_key(s['ticker'],s['interval'],s.get('extendedHours',False)) for s in saved['streams']]
             account=payload['session']
             for key in keys:
-                _streams.setdefault(key,{'ticker':key[0],'interval':key[1],'nextAttempt':time.time(),'status':'queued'})
+                _streams.setdefault(key,{'ticker':key[0],'interval':key[1],'extendedHours':key[2],'nextAttempt':time.time(),'status':'queued'})
             # Keep original eligibility times. Fetch overlap before processing
             # missed completed bars; the loop pauses if coverage cannot be proven.
             pending=saved.get('pending',[])
@@ -144,13 +145,13 @@ def enable(body:dict=Body(...)):
     if len({s['ticker'].upper() for s in requested})>6: raise HTTPException(422,'Maximum six unique symbols')
     keys=[]
     for s in requested:
-        key=stream_key(s['ticker'],s['interval']);validate_request(key[0],key[1],'1d',None,None)
+        key=stream_key(s['ticker'],s['interval'],s.get('extendedHours',False));validate_request(key[0],key[1],'1d',None,None)
         if key not in keys: keys.append(key)
     client=str(body.get('client',''))
     if not client: raise HTTPException(422,'Client required')
     with _lock:
         for key in keys:
-            _streams.setdefault(key,{'ticker':key[0],'interval':key[1],'nextAttempt':time.time(),'status':'queued'})
+            _streams.setdefault(key,{'ticker':key[0],'interval':key[1],'extendedHours':key[2],'nextAttempt':time.time(),'status':'queued'})
         id=str(uuid.uuid4())
         session={'id':id,'keys':keys,'active':True,'gap':False,'leases':{client:time.time()+60},'config':body['config'],'session':None,'pending':[],'revision':1,'controller':client,'resumeAfter':time.time()}
         if body.get('resumeSession'):
@@ -226,13 +227,13 @@ def update_streams(id:str,body:dict=Body(...)):
     from backend.main import validate_request
     requested=body.get('streams',[])
     if not requested or len(requested)>24 or len({s['ticker'].upper() for s in requested})>6: raise HTTPException(422,'Maximum six symbols and 24 streams')
-    keys=list(dict.fromkeys(stream_key(s['ticker'],s['interval']) for s in requested))
-    for ticker,interval in keys: validate_request(ticker,interval,'1d',None,None)
+    keys=list(dict.fromkeys(stream_key(s['ticker'],s['interval'],s.get('extendedHours',False)) for s in requested))
+    for ticker,interval,extended in keys: validate_request(ticker,interval,'1d',None,None)
     with _lock:
         session=lookup(id)
         if body.get('client')!=session['controller']: raise HTTPException(409,'Only the controller can change streams')
         if keys[0]!=session['keys'][0]: raise HTTPException(422,'Start a new live workspace to change the trading instrument')
-        for key in keys: _streams.setdefault(key,{'ticker':key[0],'interval':key[1],'nextAttempt':time.time(),'status':'queued'})
+        for key in keys: _streams.setdefault(key,{'ticker':key[0],'interval':key[1],'extendedHours':key[2],'nextAttempt':time.time(),'status':'queued'})
         session['keys']=keys
         return snapshot(session)
 

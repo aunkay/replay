@@ -33,7 +33,10 @@ def annotate(bars,interval,metadata,ticker):
             if calendar:
                 try:
                     day=pd.Timestamp(start.astimezone(tz).date())
-                    if calendar.is_session(day): end=min(end,calendar.session_close(day).timestamp())
+                    if calendar.is_session(day):
+                        opened=calendar.session_open(day).timestamp();closed=calendar.session_close(day).timestamp()
+                        bar.session='premarket' if bar.time<opened else 'afterhours' if bar.time>=closed else 'regular'
+                        if opened<=bar.time<closed: end=min(end,closed)
                 except Exception: pass
         elif calendar:
             try:

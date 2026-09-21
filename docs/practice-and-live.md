@@ -14,6 +14,12 @@ Filled entries can create reduce-only stop and target children. They protect the
 
 Candle OHLC cannot reveal the path inside a candle. If both exits are touched, the simulator uses the stop first and flags ambiguity. Gap-through stops fill at the opening price with configured costs. An intrabar pending entry can hit its stop on the same candle; its target cannot fill on that candle unless the entry occurred at the open. Edits apply prospectively. Market orders in manual replay fill at the revealed close.
 
+## Extended-hours data
+
+In **Load market data**, enable **Include premarket and after-hours** before loading an intraday interval. The choice persists with the dataset and is carried into comparison requests, analysis-panel requests and Live streams. Regular and extended sessions use separate cache entries and polling streams. Availability depends on the instrument and provider; daily/coarser bars do not become intraday extended-session candles.
+
+When a supported exchange calendar is known, the chart shades premarket candles purple and after-hours candles blue. Regular-session candles have no session tint. Session classification uses the exchange timezone and calendar, including early closes. After-hours candles finish at their own interval end, rather than the earlier regular-session close. Unknown exchange calendars are left unclassified.
+
 ## Historical data library and CSV import
 
 Open **Data library & CSV import** above the workspace. Enter a dataset name and use **Save current dataset** to keep the currently loaded candles on the server. Saved datasets are reusable snapshots in the persistent SQLite database. They remain available when the provider's historical coverage changes.

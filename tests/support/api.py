@@ -28,6 +28,7 @@ class FixtureTicker:
         if self.symbol not in {"AAPL", "MSFT", "SPY"}:
             return pd.DataFrame()
 
+        self.extended=kwargs.get("prepost",False)
         interval = kwargs["interval"]
         intraday = interval in main.INTRADAY
         frequencies = {
@@ -38,6 +39,7 @@ class FixtureTicker:
         # A fixed clock keeps all price/date expectations reproducible. The real
         # API still validates date bounds against the actual clock before here.
         origin = "2025-01-06T14:30:00Z" if intraday else "2025-01-06T00:00:00Z"
+        if self.extended and intraday: origin="2025-01-06T12:00:00Z"
         index = pd.date_range(origin, periods=60+_live_extra.get(self.symbol,0), freq=frequencies[interval])
         offset = {"AAPL": 100, "MSFT": 300, "SPY": 500}[self.symbol]
         frame = pd.DataFrame({
@@ -60,6 +62,7 @@ class FixtureTicker:
                 "MSFT": "Microsoft Corporation",
                 "SPY": "SPDR S&P 500 ETF Trust",
             }[self.symbol],
+            **({"exchangeName":"NMS","exchangeTimezoneName":"America/New_York"} if getattr(self,"extended",False) else {}),
             "currency": "USD",
             "fullExchangeName": "NasdaqGS",
         }

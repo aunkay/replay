@@ -89,6 +89,7 @@ interface ChartInstance {
   candles: ISeriesApi<'Candlestick'>;
   line: ISeriesApi<'Line'>;
   volume: ISeriesApi<'Histogram'>;
+  sessions: ISeriesApi<'Histogram'>;
   candleMarkers: ISeriesMarkersPluginApi<Time>;
   lineMarkers: ISeriesMarkersPluginApi<Time>;
   entryLines: [IPriceLine, IPriceLine];
@@ -496,6 +497,15 @@ export default function MarketChart({
         },
       });
     coarsePointer.addEventListener('change', updateTouchScrolling);
+    const sessions = chart.addSeries(HistogramSeries, {
+      priceScaleId: 'sessions',
+      priceLineVisible: false,
+      lastValueVisible: false,
+      autoscaleInfoProvider: () => ({
+        priceRange: { minValue: 0, maxValue: 1 },
+      }),
+    });
+    sessions.priceScale().applyOptions({ scaleMargins: { top: 0, bottom: 0 } });
     const volume = chart.addSeries(HistogramSeries, {
       priceFormat: { type: 'volume' },
       priceScaleId: 'volume',
@@ -534,6 +544,7 @@ export default function MarketChart({
     const lineMarkers = createSeriesMarkers(line, []);
     instanceRef.current = {
       chart,
+      sessions,
       candles,
       line,
       volume,
@@ -605,6 +616,26 @@ export default function MarketChart({
     const previous = previousBarsRef.current;
     const previousRange = chart.timeScale().getVisibleLogicalRange();
     const canAppend = isAppendedData(previous, bars);
+    const sessionPoint = (bar: Candle) => ({
+      time: timestamp(bar.time),
+      value: 1,
+      color:
+        bar.session === 'premarket'
+          ? 'rgba(154,100,220,0.12)'
+          : bar.session === 'afterhours'
+            ? 'rgba(60,140,220,0.12)'
+            : 'transparent',
+    });
+    if (canAppend)
+      for (const bar of bars.slice(previous.length))
+        instance.sessions.update(sessionPoint(bar));
+    else instance.sessions.setData(bars.map(sessionPoint));
+    if (containerRef.current)
+      containerRef.current.dataset.extendedSessionBars = String(
+        bars.filter(
+          (b) => b.session === 'premarket' || b.session === 'afterhours',
+        ).length,
+      );
 
     if (canAppend) {
       for (let index = previous.length; index < bars.length; index += 1) {

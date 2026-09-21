@@ -7,6 +7,9 @@ export function panelMarketRequest(
   interval: string,
   now = Date.now(),
 ): Record<string, string> {
+  const extended: Record<string, string> = market.extendedHours
+    ? { extendedHours: 'true' }
+    : {};
   // Rolling base requests still have a concrete loaded snapshot. Use that
   // span, not an unrelated "last month" window that can miss the replay clock.
   const request = market.request?.start
@@ -22,7 +25,7 @@ export function panelMarketRequest(
         }
       : market.request;
   if (!request?.start || !request.end)
-    return { ticker, interval, period: defaultPeriod(interval) };
+    return { ...extended, ticker, interval, period: defaultPeriod(interval) };
   const intraday = [
     '1m',
     '2m',
@@ -34,7 +37,13 @@ export function panelMarketRequest(
     '90m',
   ].includes(interval);
   if (!intraday)
-    return { ticker, interval, start: request.start, end: request.end };
+    return {
+      ...extended,
+      ticker,
+      interval,
+      start: request.start,
+      end: request.end,
+    };
   const day = 86400000;
   const today = Math.floor(now / day) * day;
   const retention =
@@ -52,6 +61,7 @@ export function panelMarketRequest(
       `Different chart intervals are supported, but Yahoo only provides ${interval} history for the last ${retention} days. Load a more recent base-chart date range to replay these intervals together.`,
     );
   return {
+    ...extended,
     ticker,
     interval,
     start: new Date(start).toISOString().slice(0, 10),

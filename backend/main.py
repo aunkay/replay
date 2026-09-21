@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta, timezone
 import logging
 import math
@@ -41,6 +41,7 @@ class Bar(BaseModel):
     volume: float
     endTime: int | None = None
     complete: bool | None = None
+    session: str | None = None
 
 
 class DateRange(BaseModel):
@@ -61,6 +62,7 @@ class MarketData(BaseModel):
     fetchedAt: str
     range: DateRange
     warnings: list[str]
+    extendedHours: bool = False
 
 
 @dataclass(frozen=True)
@@ -70,6 +72,7 @@ class DataRequest:
     period: str | None
     start: date | None
     end: date | None
+    extended_hours: bool = False
 
 
 _cache: OrderedDict[DataRequest, tuple[float, MarketData]] = OrderedDict()
@@ -202,7 +205,7 @@ def _load_market_data(request: DataRequest, live: bool = False) -> MarketData:
             "interval": request.interval,
             "auto_adjust": True,
             "actions": False,
-            "prepost": False,
+            "prepost": request.extended_hours,
             "timeout": 15,
             "raise_errors": True,
         }
@@ -240,6 +243,7 @@ def _load_market_data(request: DataRequest, live: bool = False) -> MarketData:
     annotate(bars, request.interval, metadata, request.ticker)
     result = MarketData(
         ticker=request.ticker,
+        extendedHours=request.extended_hours,
         name=metadata.get("longName") or metadata.get("shortName") or request.ticker,
         currency=currency,
         exchange=metadata.get("fullExchangeName") or metadata.get("exchangeName"),
@@ -282,10 +286,11 @@ def market_data(
     period: str | None = None,
     start: str | None = None,
     end: str | None = None,
+    extendedHours: bool = False,
 ) -> MarketData:
     # A normal def route runs in FastAPI's worker thread pool; yfinance's
     # blocking network requests never block the ASGI event loop.
-    return _load_market_data(validate_request(ticker, interval, period, start, end))
+    return _load_market_data(replace(validate_request(ticker, interval, period, start, end),extended_hours=extendedHours))
 
 
 from backend.datasets import router as dataset_router

@@ -9,6 +9,7 @@ export interface MarketData {
   interval: string;
   source: 'yfinance' | 'demo' | 'csv';
   adjusted: boolean;
+  extendedHours?: boolean;
   bars: Candle[];
   fetchedAt: string;
   range: { start: string; end: string };

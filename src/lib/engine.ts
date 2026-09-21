@@ -16,6 +16,7 @@ export type Candle = {
   volume: number;
   endTime?: number;
   complete?: boolean;
+  session?: 'premarket' | 'regular' | 'afterhours' | null;
 };
 
 export type DynamicProtection = {

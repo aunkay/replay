@@ -254,7 +254,10 @@ export default function App() {
     session,
     setSession,
     library.client,
-    liveStreams,
+    liveStreams.map((s) => ({
+      ...s,
+      extendedHours: Boolean(market.extendedHours),
+    })),
     library.record?.id,
   );
   useEffect(() => {
@@ -322,6 +325,7 @@ export default function App() {
   const [ticker, setTicker] = useState(market.ticker);
   const [interval, setIntervalValue] = useState(market.interval);
   const [period, setPeriod] = useState(defaultPeriod(market.interval));
+  const [extendedHours, setExtendedHours] = useState(false);
   const [customRange, setCustomRange] = useState(false);
   const [rangeStart, setRangeStart] = useState('');
   const [rangeEnd, setRangeEnd] = useState('');
@@ -684,6 +688,7 @@ export default function App() {
       });
       return;
     }
+    setExtendedHours(Boolean(market.extendedHours));
     setTicker(nextTicker);
     setIntervalValue(nextInterval);
     setPeriod(defaultPeriod(nextInterval));
@@ -701,6 +706,7 @@ export default function App() {
         ticker: ticker.trim().toUpperCase(),
         interval,
       };
+      if (extendedHours) params.extendedHours = 'true';
       if (customRange) {
         params.start = rangeStart;
         if (rangeEnd) params.end = rangeEnd;
@@ -2714,6 +2720,19 @@ export default function App() {
                       </select>
                     </div>
                   </div>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={extendedHours}
+                      onChange={(e) => setExtendedHours(e.target.checked)}
+                    />
+                    Include premarket and after-hours
+                  </label>
+                  <p>
+                    Extended sessions are available for supported intraday
+                    instruments. Purple shading marks premarket; blue shading
+                    marks after-hours when exchange hours are known.
+                  </p>
                   {customRange && (
                     <div className="form-row">
                       <div>

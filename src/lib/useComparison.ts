@@ -47,14 +47,32 @@ function restore(storageKey: string, color: string): Preferences {
   }
 }
 
-export function useComparison(base: MarketData, slot = 0, liveMarkets?: MarketData[]) {
+export function useComparison(
+  base: MarketData,
+  slot = 0,
+  liveMarkets?: MarketData[],
+) {
   const storageKey = slot === 0 ? STORAGE_KEY : `${STORAGE_KEY}:${slot + 1}`;
   const [preferences, setPreferences] = useState<Preferences>(() =>
-    restore(storageKey, ['#f0b86e', '#6db5f8', '#ed819f', '#6fd8d3', '#e3c5ff'][slot]),
+    restore(
+      storageKey,
+      ['#f0b86e', '#6db5f8', '#ed819f', '#6fd8d3', '#e3c5ff'][slot],
+    ),
   );
   const [status, setStatus] = useState({ loading: false, error: '' });
   const [saved, setSaved] = useState(true);
-  useEffect(()=>{const reload=()=>setPreferences(restore(storageKey,['#f0b86e','#6db5f8','#ed819f','#6fd8d3','#e3c5ff'][slot]));window.addEventListener('replay:preferences-restored',reload);return ()=>window.removeEventListener('replay:preferences-restored',reload);},[storageKey,slot]);
+  useEffect(() => {
+    const reload = () =>
+      setPreferences(
+        restore(
+          storageKey,
+          ['#f0b86e', '#6db5f8', '#ed819f', '#6fd8d3', '#e3c5ff'][slot],
+        ),
+      );
+    window.addEventListener('replay:preferences-restored', reload);
+    return () =>
+      window.removeEventListener('replay:preferences-restored', reload);
+  }, [storageKey, slot]);
   const key = marketComparisonKey(base);
   const keyRef = useRef(key);
   keyRef.current = key;
@@ -94,7 +112,10 @@ export function useComparison(base: MarketData, slot = 0, liveMarkets?: MarketDa
       setStatus({ loading: true, error: '' });
       try {
         const market = await fetchMarketData(
-          benchmarkRequest(base, ticker),
+          {
+            ...benchmarkRequest(base, ticker),
+            ...(base.extendedHours ? { extendedHours: 'true' } : {}),
+          },
           controller.signal,
         );
         if (id !== requestRef.current.id || keyRef.current !== key)
@@ -149,7 +170,15 @@ export function useComparison(base: MarketData, slot = 0, liveMarkets?: MarketDa
       void load(preferences.ticker);
     }
     return cancel;
-  }, [key, load, cancel, preferences.ticker, preferences.cache, base.interval, liveMarkets]);
+  }, [
+    key,
+    load,
+    cancel,
+    preferences.ticker,
+    preferences.cache,
+    base.interval,
+    liveMarkets,
+  ]);
 
   useEffect(() => {
     try {
@@ -164,9 +193,13 @@ export function useComparison(base: MarketData, slot = 0, liveMarkets?: MarketDa
     ...preferences,
     ...status,
     saved,
-    data: liveMarkets ? liveMarkets.find(m=>m.ticker===preferences.ticker&&m.interval===base.interval)??null :
-      preferences.cache?.baseKey === key &&
-      preferences.cache.market.interval === base.interval
+    data: liveMarkets
+      ? (liveMarkets.find(
+          (m) =>
+            m.ticker === preferences.ticker && m.interval === base.interval,
+        ) ?? null)
+      : preferences.cache?.baseKey === key &&
+          preferences.cache.market.interval === base.interval
         ? preferences.cache.market
         : null,
     load,

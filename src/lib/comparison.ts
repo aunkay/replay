@@ -191,6 +191,7 @@ export function marketComparisonKey(base: MarketData): string {
     base.bars.at(-1)?.time ?? null,
     base.bars.length,
     base.adjusted,
+    Boolean(base.extendedHours),
     base.currency,
     typeof request?.start === 'string' ? request.start : null,
     typeof request?.end === 'string' ? request.end : null,

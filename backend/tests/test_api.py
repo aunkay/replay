@@ -51,7 +51,7 @@ def test_normalized_candles_and_cache(client, instrument):
     assert result["source"] == "yfinance"
     assert result["adjusted"] is True
     assert result["currency"] == "USD"
-    assert {k:v for k,v in result["bars"][0].items() if k not in {"endTime","complete"}} == {"time": 1735776000, "open": 100, "high": 104, "low": 99, "close": 102, "volume": 1000}
+    assert {k:v for k,v in result["bars"][0].items() if k not in {"endTime","complete","session"}} == {"time": 1735776000, "open": 100, "high": 104, "low": 99, "close": 102, "volume": 1000}
     ticker.history.assert_called_once_with(interval="1d", auto_adjust=True, actions=False, prepost=False, timeout=15, raise_errors=True, period="1y")
     assert client.get("/api/market-data").json() == result
     factory.assert_called_once_with("AAPL")
@@ -142,3 +142,20 @@ def test_cache_expires(client, instrument):
     with patch.object(main, "monotonic", return_value=100 + main.CACHE_TTL_SECONDS + 1):
         assert client.get("/api/market-data").status_code == 200
     assert instrument[0].history.call_count == 2
+
+
+def test_extended_hours_cache_and_session_boundaries(client,instrument):
+    ticker,_=instrument
+    ticker.history.return_value=pd.DataFrame({'Open':[100,101,102],'High':[101,102,103],'Low':[99,100,101],'Close':[100,101,102],'Volume':[1000]*3},index=pd.DatetimeIndex(['2025-01-06T13:00:00Z','2025-01-06T15:00:00Z','2025-01-06T22:00:00Z']))
+    ticker.get_history_metadata.return_value={'currency':'USD','exchangeName':'NMS','exchangeTimezoneName':'America/New_York'}
+    args={'ticker':'AAPL','interval':'5m','period':'1d'}
+    regular=client.get('/api/market-data',params=args)
+    extended=client.get('/api/market-data',params={**args,'extendedHours':'true'})
+    assert regular.status_code==extended.status_code==200
+    assert ticker.history.call_count==2
+    assert ticker.history.call_args.kwargs['prepost'] is True
+    bars=extended.json()['bars']
+    assert [b['session'] for b in bars]==['premarket','regular','afterhours']
+    assert bars[-1]['endTime']==bars[-1]['time']+300
+    assert client.get('/api/market-data',params={**args,'extendedHours':'true'}).json()==extended.json()
+    assert ticker.history.call_count==2
