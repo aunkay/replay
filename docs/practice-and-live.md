@@ -14,6 +14,14 @@ Filled entries can create reduce-only stop and target children. They protect the
 
 Candle OHLC cannot reveal the path inside a candle. If both exits are touched, the simulator uses the stop first and flags ambiguity. Gap-through stops fill at the opening price with configured costs. An intrabar pending entry can hit its stop on the same candle; its target cannot fill on that candle unless the entry occurred at the open. Edits apply prospectively. Market orders in manual replay fill at the revealed close.
 
+## Historical data library and CSV import
+
+Open **Data library & CSV import** above the workspace. Enter a dataset name and use **Save current dataset** to keep the currently loaded candles on the server. Saved datasets are reusable snapshots in the persistent SQLite database. They remain available when the provider's historical coverage changes.
+
+To import, select the ticker, interval and three-letter currency, then choose a CSV file or paste its contents. Required columns are `time` (or `date`/`datetime`), `open`, `high`, `low`, `close`, `volume`, with case-insensitive headers. Timestamps must be increasing and unique, expressed as ISO dates/times or Unix **seconds**. Timezone-free dates use UTC. Invalid OHLC values, nonfinite numbers and duplicate/out-of-order timestamps are rejected. Limits are 20 MB of CSV and 2–100,000 candles.
+
+**Inspect dataset** shows the stored range and potential fixed-interval gaps. Gaps may be expected overnight closures, weekends or holidays; they are not automatically filled. Up to 200 are shown. Monthly intervals are not scanned. **Load dataset** starts a fresh replay account and leaves any previous server-saved session intact. Imported candles are labeled **IMPORTED CSV**, and prices are used as supplied without corporate-action adjustment. Deleting a library entry does not remove copies already used by saved sessions.
+
 ## Market alerts
 
 Expand **Alerts** above the workspace. Enter a name and configure price, volume, indicator or constant operands, with above/below or crossover operators. Combine conditions with AND/OR, or load a strategy template's long-entry rule and customize it. Indicator conditions wait for their normal warm-up. Alerts use the base ticker and current interval.

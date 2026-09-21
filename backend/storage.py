@@ -43,6 +43,7 @@ def db():
         # busy_timeout applies. Initialize once before accepting other readers.
         conn.execute('PRAGMA journal_mode=WAL')
         conn.executescript('''
+        CREATE TABLE IF NOT EXISTS datasets(id TEXT PRIMARY KEY,name TEXT NOT NULL,market TEXT NOT NULL,gaps TEXT NOT NULL,updated REAL NOT NULL);
         CREATE TABLE IF NOT EXISTS schema_version(version INTEGER PRIMARY KEY);
         INSERT OR IGNORE INTO schema_version VALUES(1);
         CREATE TABLE IF NOT EXISTS sessions(id TEXT PRIMARY KEY,name TEXT NOT NULL,revision INTEGER NOT NULL,payload TEXT NOT NULL,updated REAL NOT NULL,archived INTEGER NOT NULL DEFAULT 0,fingerprint TEXT UNIQUE,controller TEXT,lease REAL DEFAULT 0);

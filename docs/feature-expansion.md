@@ -14,7 +14,7 @@ sessions and strategy flows must remain compatible.
 | Portfolio trading | Trade base and comparisons using shared cash, buying power, positions and portfolio P&L | Pending |
 | Strategy validation | Rolling train/test windows, parameter heatmaps, reproducible Monte Carlo distributions | Pending |
 | Execution realism | Configurable spread, volume participation/partial fills, short borrowing costs, optional lower-timeframe execution | Pending |
-| Data library / CSV | Server-persisted datasets, validated CSV import, missing-candle inspection, reusable data selection | Pending |
+| Data library / CSV | Server-persisted datasets, validated CSV import, missing-candle inspection, reusable data selection | Implemented; six import/API checks and desktop/iPhone import-inspect-reload-replay journeys pass |
 | Multi-timeframe rules | Per-rule interval selection; only completed higher-timeframe values at signal time | Pending |
 | Extended hours | Request/cache/session support; explicit inclusion control; session chart shading | Pending |
 | Background Live | Explicit persisted server monitoring opt-in, browser-independent operation and alert history, safe restart/reconnect | Implemented; restart recovery API test and desktop/iPhone disconnect-alert-reconnect journeys pass |
@@ -38,3 +38,5 @@ Latest checks: 359 unit tests pass; build and E2E TypeScript checks pass. Both a
 Alerts evidence: six desktop/iPhone journeys pass for local/server pause and history persistence, rearm, indicator rules and template loading. Shared rule evaluator, causal seek stopping and completed-bar Live evaluation have unit coverage. Checkpoints now include alert definitions/history.
 
 Background evidence: backend restart/recovery/stop test passes; desktop/iPhone journeys close the browser, expire its lease, advance provider data, observe a persisted alert, reconnect and stop the monitor. Opt-in metadata and original pending-command eligibility survive restart.
+
+Data-library evidence: six API tests cover persisted import/read/delete and malformed timestamp/OHLCV rejection. Desktop and iPhone journeys upload a CSV, inspect a known gap, reload, start replay, reject invalid prices and delete the library entry. Imported data has an explicit CSV source label.

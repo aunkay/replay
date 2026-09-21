@@ -1,3 +1,4 @@
+import DataLibrary from './components/DataLibrary';
 import BackgroundMonitors from './components/BackgroundMonitors';
 import { advanceReplay, alertCommand, type AlertCommand } from './lib/alerts';
 import Alerts from './components/Alerts';
@@ -1074,6 +1075,20 @@ export default function App() {
               }}
             />
           )}
+          {!blind && !live.active && (
+            <DataLibrary
+              market={market}
+              onLoad={(next) => {
+                setPlaying(false);
+                library.detach();
+                setSession(freshSession(next, account.config));
+                setHoverBar(null);
+                setOrderPrice('');
+                setDrawingTool('cursor');
+                setSelectedDrawingId(null);
+              }}
+            />
+          )}
           <div className="workspace-tools">
             {!blind && (
               <Alerts
@@ -1470,11 +1485,17 @@ export default function App() {
                     title={
                       market.source === 'demo'
                         ? 'Synthetic sample prices, not historical Apple prices'
-                        : 'Adjusted historical prices via yfinance'
+                        : market.source === 'csv'
+                          ? 'Imported historical prices as supplied'
+                          : 'Adjusted historical prices via yfinance'
                     }
                   >
                     <i />
-                    {market.source === 'demo' ? 'SAMPLE DATA' : 'YAHOO FINANCE'}
+                    {market.source === 'demo'
+                      ? 'SAMPLE DATA'
+                      : market.source === 'csv'
+                        ? 'IMPORTED CSV'
+                        : 'YAHOO FINANCE'}
                   </div>
                 </div>
                 <div className="ohlc-row">
@@ -1667,7 +1688,9 @@ export default function App() {
                     <span className="footer-divider">|</span>{' '}
                     {market.source === 'demo'
                       ? 'Synthetic demo'
-                      : 'Adjusted prices'}{' '}
+                      : market.source === 'csv'
+                        ? 'Imported prices'
+                        : 'Adjusted prices'}{' '}
                     <span className="footer-divider">|</span>{' '}
                     <a
                       href="https://www.tradingview.com/"
@@ -2319,7 +2342,9 @@ export default function App() {
               <span className="purple-dot" />
               {market.source === 'demo'
                 ? 'Demo session · synthetic prices. Load market data for real history.'
-                : `Historical data via yfinance · ${market.warnings[0] || 'Simulation uses adjusted prices.'}`}
+                : market.source === 'csv'
+                  ? 'Imported CSV · prices as supplied. Verify corporate actions and currency before research.'
+                  : `Historical data via yfinance · ${market.warnings[0] || 'Simulation uses adjusted prices.'}`}
             </span>
             <button onClick={() => setDialog('help')}>
               Keyboard shortcuts <kbd>?</kbd>

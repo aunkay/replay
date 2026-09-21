@@ -7,7 +7,7 @@ export interface MarketData {
   exchange: string | null;
   exchangeTimezone?: string;
   interval: string;
-  source: 'yfinance' | 'demo';
+  source: 'yfinance' | 'demo' | 'csv';
   adjusted: boolean;
   bars: Candle[];
   fetchedAt: string;
@@ -140,7 +140,7 @@ export function isValidMarketData(value: unknown): value is MarketData {
     ![...INTERVALS.map(([interval]) => interval), '1h'].includes(
       data.interval,
     ) ||
-    !['yfinance', 'demo'].includes(data.source) ||
+    !['yfinance', 'demo', 'csv'].includes(data.source) ||
     typeof data.adjusted !== 'boolean' ||
     typeof data.fetchedAt !== 'string' ||
     typeof data.range?.start !== 'string' ||

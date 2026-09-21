@@ -36,6 +36,7 @@ export default defineConfig({
         '**/checkpoints.spec.ts',
         '**/alerts.spec.ts',
         '**/background-live.spec.ts',
+        '**/data-library.spec.ts',
         '**/insecure-origin.spec.ts',
         '**/replay-follow.spec.ts',
         '**/comparison-price.spec.ts',

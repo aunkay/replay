@@ -1,3 +1,4 @@
+import { isValidMarketData } from '../src/lib/data';
 import { advanceReplay, alertCommand } from '../src/lib/alerts';
 import { applyCheckpoint } from '../src/lib/checkpoints';
 import { initializeLive, applyLiveTick } from '../src/lib/liveEngine';
@@ -126,6 +127,8 @@ if (!isMainThread) {
         validateStrategy(body);
         return send(200, { valid: true });
       }
+      if (request.url === '/validate-market')
+        return send(200, { valid: isValidMarketData(body) });
       if (request.url === '/validate')
         return send(200, { valid: isValidSession(body) });
       if (request.url === '/initialize')

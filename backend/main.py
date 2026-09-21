@@ -288,6 +288,8 @@ def market_data(
     return _load_market_data(validate_request(ticker, interval, period, start, end))
 
 
+from backend.datasets import router as dataset_router
+app.include_router(dataset_router)
 from backend.storage import router as storage_router
 app.include_router(storage_router)
 from backend.live import router as live_router
