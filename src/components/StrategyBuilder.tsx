@@ -1,3 +1,4 @@
+import ResearchResults from './ResearchResults';
 import { RULE_INTERVALS, type RuleInterval } from '../lib/timeframes';
 import { useEffect, useState } from 'react';
 import { api } from '../lib/server';
@@ -268,6 +269,16 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
     [job, setJob] = useState(''),
     [result, setResult] = useState<any>(null),
     [history, setHistory] = useState<any[]>([]);
+  const [research, setResearch] = useState(false),
+    [researchMode, setResearchMode] = useState('single'),
+    [trainBars, setTrainBars] = useState(
+      Math.max(10, Math.floor(bars.length * 0.5)),
+    ),
+    [testBars, setTestBars] = useState(
+      Math.max(2, Math.floor(bars.length * 0.2)),
+    ),
+    [simulations, setSimulations] = useState(1000),
+    [seed, setSeed] = useState(42);
   const [optimize, setOptimize] = useState(false),
     [path, setPath] = useState('allocationPct'),
     [minimum, setMinimum] = useState(1),
@@ -332,6 +343,9 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
         bars,
         parameters,
         split: split / 100,
+        research: research
+          ? { mode: researchMode, trainBars, testBars, simulations, seed }
+          : undefined,
       });
       setJob(r.id);
       setResult({ status: r.status });
@@ -655,6 +669,84 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
           </div>
         )}
       </details>
+      <details className="hub-disclosure">
+        <summary>5. Robustness & walk-forward research</summary>
+        <label>
+          <input
+            type="checkbox"
+            checked={research}
+            onChange={(e) => setResearch(e.target.checked)}
+          />
+          Enable robustness analysis
+        </label>
+        {research && (
+          <>
+            <label>
+              Research mode
+              <select
+                aria-label="Research mode"
+                value={researchMode}
+                onChange={(e) => setResearchMode(e.target.value)}
+              >
+                <option value="single">Current evaluation + Monte Carlo</option>
+                <option value="walk-forward">
+                  Rolling walk-forward + Monte Carlo
+                </option>
+              </select>
+            </label>
+            {researchMode === 'walk-forward' && (
+              <>
+                <label>
+                  Training window bars
+                  <input
+                    type="number"
+                    min="10"
+                    value={trainBars}
+                    onChange={(e) => setTrainBars(Number(e.target.value))}
+                  />
+                </label>
+                <label>
+                  Test window bars
+                  <input
+                    type="number"
+                    min="2"
+                    value={testBars}
+                    onChange={(e) => setTestBars(Number(e.target.value))}
+                  />
+                </label>
+                <p>
+                  2–20 non-overlapping test windows. Each uses the preceding
+                  training window to select parameters. Enable parameter search
+                  above to compare candidates.
+                </p>
+              </>
+            )}
+            <label>
+              Monte Carlo simulations
+              <input
+                type="number"
+                min="100"
+                max="5000"
+                value={simulations}
+                onChange={(e) => setSimulations(Number(e.target.value))}
+              />
+            </label>
+            <label>
+              Random seed
+              <input
+                type="number"
+                min="0"
+                max="4294967295"
+                value={seed}
+                onChange={(e) => setSeed(Number(e.target.value))}
+              />
+            </label>
+          </>
+        )}
+      </details>
+      {output && (
+        <ResearchResults output={output} parameters={output.parameters ?? []} />
+      )}
       <div className="hub-actions strategy-run-actions">
         <button disabled={busy} onClick={saveStrategy}>
           Save strategy

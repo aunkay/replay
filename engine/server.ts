@@ -1,3 +1,4 @@
+import { runResearch } from '../src/lib/research';
 import { isValidMarketData } from '../src/lib/data';
 import { advanceReplay, alertCommand } from '../src/lib/alerts';
 import { applyCheckpoint } from '../src/lib/checkpoints';
@@ -25,26 +26,36 @@ import { isValidSession } from '../src/lib/session';
 if (!isMainThread) {
   try {
     parentPort!.postMessage({
-      result: workerData.parameters?.length
-        ? optimizeStrategy(
+      result: workerData.research
+        ? runResearch(
             workerData.strategy,
             workerData.bars,
-            workerData.parameters,
+            workerData.parameters ?? [],
+            workerData.research,
             workerData.split,
-            (completed, total, partialCandidate) =>
-              parentPort!.postMessage({
-                progress: { completed, total },
-                partialCandidate,
-              }),
-          )
-        : runStrategy(
-            workerData.strategy,
-            workerData.bars,
-            1,
-            workerData.bars.length,
             (completed, total) =>
               parentPort!.postMessage({ progress: { completed, total } }),
-          ),
+          )
+        : workerData.parameters?.length
+          ? optimizeStrategy(
+              workerData.strategy,
+              workerData.bars,
+              workerData.parameters,
+              workerData.split,
+              (completed, total, partialCandidate) =>
+                parentPort!.postMessage({
+                  progress: { completed, total },
+                  partialCandidate,
+                }),
+            )
+          : runStrategy(
+              workerData.strategy,
+              workerData.bars,
+              1,
+              workerData.bars.length,
+              (completed, total) =>
+                parentPort!.postMessage({ progress: { completed, total } }),
+            ),
     });
   } catch (error) {
     parentPort!.postMessage({ error: (error as Error).message });

@@ -410,6 +410,7 @@ export function optimizeStrategy(
   );
   return {
     boundary,
+    parameters,
     candidates,
     winner: candidates[0].strategy,
     test: runStrategy(candidates[0].strategy, bars, boundary),

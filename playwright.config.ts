@@ -39,6 +39,7 @@ export default defineConfig({
         '**/data-library.spec.ts',
         '**/extended-hours.spec.ts',
         '**/timeframe-rules.spec.ts',
+        '**/research-validation.spec.ts',
         '**/insecure-origin.spec.ts',
         '**/replay-follow.spec.ts',
         '**/comparison-price.spec.ts',

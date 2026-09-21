@@ -96,6 +96,14 @@ Backtests run in a worker, separate from the API's trading engine requests. Inpu
 
 Results show net P&L, maximum drawdown and annualized Sharpe. Open the historical quick-test table to compare all templates against buy-and-hold on three ETFs. These reference results are separate from the loaded chart. See [research sources, methodology and reproducible results](strategy-research.md).
 
+## Walk-forward and robustness research
+
+In Strategy lab, expand **5. Robustness & walk-forward research** and enable robustness analysis. **Current evaluation + Monte Carlo** adds a seeded trade bootstrap to the normal backtest or held-out test. **Rolling walk-forward + Monte Carlo** selects parameters separately in each preceding training window and evaluates them on the next non-overlapping test window. Choose sizes producing 2–20 test windows, with training 1–9 times test length. Parameter search is optional; without it, each window evaluates the fixed strategy.
+
+Walk-forward results show each test window's net P&L, maximum drawdown and Sharpe, plus a combined equity curve and CSV export. Each window starts with the same capital and closes its positions at the end. Combined dollar P&L is additive, not a dynamically compounded portfolio. A training-only stability heatmap shows the first two parameter dimensions; additional dimensions are averaged within each cell. Select a training fold to inspect how stable the parameter region is over time.
+
+Monte Carlo draws net closed-trade P&L with replacement for 100–5,000 simulations using the chosen seed. It reports 5th/50th/95th percentile P&L and drawdown, and the simulated probability of a loss. It assumes independent trades and fixed stakes; it does not preserve serial correlation or predict future market regimes. No-trade results are reported explicitly. Settings and results are retained in the saved run snapshot.
+
 ## Multi-timeframe strategy and alert rules
 
 Each price or indicator operand has a **Rule timeframe** selector. Keep **Base chart interval**, or choose a larger aligned interval to combine, for example, a 5-minute entry signal with a daily trend filter. The same selector is available in market alerts. **Bars ago** counts bars in that operand's selected timeframe.

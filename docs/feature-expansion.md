@@ -12,7 +12,7 @@ sessions and strategy flows must remain compatible.
 | Bookmarks / checkpoints | Name, save, restore and retry replay with exact account state; dataset identity and saved-session handling | Implemented; desktop/iPhone browser and server retry/reload journeys pass |
 | Alerts | Price crossings, indicator crossings, strategy conditions; notifications and optional replay pause; no future data | Implemented; six desktop/iPhone journeys pass; Live engine tests pass; background coverage pending |
 | Portfolio trading | Trade base and comparisons using shared cash, buying power, positions and portfolio P&L | Pending |
-| Strategy validation | Rolling train/test windows, parameter heatmaps, reproducible Monte Carlo distributions | Pending |
+| Strategy validation | Rolling train/test windows, parameter heatmaps, reproducible Monte Carlo distributions | Implemented; causal selection/bootstrap unit checks and desktop/iPhone worker + heatmap journeys pass |
 | Execution realism | Configurable spread, volume participation/partial fills, short borrowing costs, optional lower-timeframe execution | Pending |
 | Data library / CSV | Server-persisted datasets, validated CSV import, missing-candle inspection, reusable data selection | Implemented; six import/API checks and desktop/iPhone import-inspect-reload-replay journeys pass |
 | Multi-timeframe rules | Per-rule interval selection; only completed higher-timeframe values at signal time | Implemented with causal UTC aggregation; unit boundary/warm-up/future-price tests and desktop/iPhone alert + worker journeys pass |
