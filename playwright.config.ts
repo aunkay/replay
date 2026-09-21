@@ -40,6 +40,7 @@ export default defineConfig({
         '**/extended-hours.spec.ts',
         '**/timeframe-rules.spec.ts',
         '**/research-validation.spec.ts',
+        '**/execution.spec.ts',
         '**/insecure-origin.spec.ts',
         '**/replay-follow.spec.ts',
         '**/comparison-price.spec.ts',

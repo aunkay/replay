@@ -333,6 +333,11 @@ export default function App() {
   const [commission, setCommission] = useState(
     String(account.config.commissionBps),
   );
+  const [spread, setSpread] = useState(String(account.config.spreadBps ?? 0)),
+    [borrow, setBorrow] = useState(String(account.config.borrowAprPct ?? 0)),
+    [participation, setParticipation] = useState(
+      String(account.config.volumeParticipationPct ?? 0),
+    );
   const [slippage, setSlippage] = useState(String(account.config.slippageBps));
   const [resetTarget, setResetTarget] = useState(startCursor);
   const [saved, setSaved] = useState(true);
@@ -349,6 +354,9 @@ export default function App() {
     setCapital(String(account.config.initialCapital));
     setCommission(String(account.config.commissionBps));
     setSlippage(String(account.config.slippageBps));
+    setSpread(String(account.config.spreadBps ?? 0));
+    setBorrow(String(account.config.borrowAprPct ?? 0));
+    setParticipation(String(account.config.volumeParticipationPct ?? 0));
     setDialog('settings');
   };
   const liveMarket = live.active
@@ -920,6 +928,7 @@ export default function App() {
         ['Unrealized P&L', metrics.unrealizedPnl],
         ['Total P&L', metrics.totalPnl],
         ['Fees paid', metrics.feesPaid],
+        ['Short borrowing paid', account.borrowingPaid ?? 0],
         ['Max drawdown (%)', metrics.maxDrawdown],
         [],
         [
@@ -2226,6 +2235,12 @@ export default function App() {
                     </span>
                     <span>
                       Fees paid <strong>{money(metrics.feesPaid)}</strong>
+                      {(account.borrowingPaid ?? 0) > 0 && (
+                        <span>
+                          {' '}
+                          · Borrowing {money(account.borrowingPaid!)}
+                        </span>
+                      )}
                     </span>
                     <span>
                       Gross exposure <strong>{money(metrics.exposure)}</strong>
@@ -2831,6 +2846,9 @@ export default function App() {
                         initialCapital: Number(capital),
                         commissionBps: Number(commission),
                         slippageBps: Number(slippage),
+                        spreadBps: Number(spread),
+                        borrowAprPct: Number(borrow),
+                        volumeParticipationPct: Number(participation),
                       });
                     } catch (error) {
                       setNotice({
@@ -2895,8 +2913,46 @@ export default function App() {
                       />
                     </div>
                   </div>
-                  <div className="info-box">
-                    <CircleHelp size={16} />
+                  <div className="execution-settings">
+                    <label>
+                      Bid/ask spread (bps)
+                      <input
+                        type="number"
+                        min="0"
+                        max="9999"
+                        step="any"
+                        value={spread}
+                        onChange={(e) => setSpread(e.target.value)}
+                      />
+                    </label>
+                    <label>
+                      Short borrow APR (%)
+                      <input
+                        type="number"
+                        min="0"
+                        max="1000"
+                        step="any"
+                        value={borrow}
+                        onChange={(e) => setBorrow(e.target.value)}
+                      />
+                    </label>
+                    <label>
+                      Volume participation (%)
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="any"
+                        value={participation}
+                        onChange={(e) => setParticipation(e.target.value)}
+                      />
+                    </label>
+                    <p>
+                      Volume participation 0 disables partial fills. Otherwise
+                      all orders share that fraction of each candle's reported
+                      volume; remainders carry forward. Borrow charges accrue
+                      over elapsed calendar time on short positions.
+                    </p>
                     <span>
                       1 basis point = 0.01%. Commission applies to every fill.
                       Slippage applies to market and stop orders. Exposure is

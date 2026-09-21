@@ -495,39 +495,49 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
               />
             </label>
           ))}
-          {(['initialCapital', 'commissionBps', 'slippageBps'] as const).map(
-            (key) => (
-              <label key={key}>
+          {(
+            [
+              'initialCapital',
+              'commissionBps',
+              'slippageBps',
+              'spreadBps',
+              'borrowAprPct',
+              'volumeParticipationPct',
+            ] as const
+          ).map((key) => (
+            <label key={key}>
+              {
                 {
-                  {
-                    quantity: 'Fixed quantity',
-                    allocationPct: 'Equity allocation (%)',
-                    riskPct: 'Equity risk (%)',
-                    stopPct: 'Stop-loss (%)',
-                    targetPct: 'Take-profit (%)',
-                    initialCapital: 'Starting capital',
-                    commissionBps: 'Commission (bps)',
-                    slippageBps: 'Slippage (bps)',
-                  }[key]
+                  quantity: 'Fixed quantity',
+                  allocationPct: 'Equity allocation (%)',
+                  riskPct: 'Equity risk (%)',
+                  stopPct: 'Stop-loss (%)',
+                  targetPct: 'Take-profit (%)',
+                  initialCapital: 'Starting capital',
+                  commissionBps: 'Commission (bps)',
+                  slippageBps: 'Slippage (bps)',
+                  spreadBps: 'Spread (bps)',
+                  borrowAprPct: 'Short borrow APR (%)',
+                  volumeParticipationPct: 'Volume participation (%)',
+                }[key]
+              }
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={strategy.config[key] ?? 0}
+                onChange={(e) =>
+                  setStrategy({
+                    ...strategy,
+                    config: {
+                      ...strategy.config,
+                      [key]: Number(e.target.value),
+                    },
+                  })
                 }
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={strategy.config[key]}
-                  onChange={(e) =>
-                    setStrategy({
-                      ...strategy,
-                      config: {
-                        ...strategy.config,
-                        [key]: Number(e.target.value),
-                      },
-                    })
-                  }
-                />
-              </label>
-            ),
-          )}
+              />
+            </label>
+          ))}
         </div>
       </details>
       <details className="hub-disclosure">

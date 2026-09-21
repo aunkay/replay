@@ -6,6 +6,14 @@ Each tab starts with a visible explanation and a three-step quick start. Expand 
 
 The workspace keeps navigation separate from the scrolling page. Each section explains its next step, and keyboard focus stays inside the dialog until you close it. Escape returns focus to the Practice & research button.
 
+## Execution costs and volume limits
+
+Account settings include **Bid/ask spread (bps)**, **Short borrow APR (%)**, and **Volume participation (%)**. Strategy lab offers the same cost fields. Defaults are zero, preserving existing behavior. Spread is split equally around candle prices, in addition to adverse slippage. Limit fills stay within the specified limit and require the corresponding bid/ask side to reach it.
+
+A positive volume participation setting caps the combined quantity filled by all orders during each candle. For example, 20% of a candle reporting 10 units allows two units total. Partial fills appear as executed order slices and pending remainder orders; stop remainders become market orders after triggering. Zero-volume candles cannot fill orders. This is a candle-volume approximation, not order-book queue simulation. A setting of 0 disables the volume cap.
+
+Short borrowing accrues over elapsed calendar time using the prior observed price and a 365-day year. It reduces cash and account P&L and appears separately from commissions in account totals and session exports. Borrow availability is not modeled. Trade-episode financing attribution and finer-candle execution are still being integrated in this expansion.
+
 ## Protected orders and position sizing
 
 Expand **Protection & risk sizing** in the order ticket. Choose a stop-loss and/or take-profit, expressed as price or a percentage; targets can also use a risk multiple. Manual quantity remains available. Cash-risk and percentage-equity modes calculate quantity from entry-to-stop distance, estimated fees and slippage, round down to the selected quantity step and cap exposure at 1× equity. Percentage risk defaults to 1%.

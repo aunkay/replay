@@ -1,6 +1,6 @@
 import { validateAlert, type MarketAlert, type AlertEvent } from './alerts';
 import { isValidMarketData, type MarketData } from './data';
-import type { TradingState } from './engine';
+import { createAccount, type TradingState } from './engine';
 
 export type StoredSession = {
   mode?: 'replay' | 'blind' | 'live';
@@ -155,6 +155,24 @@ export function isValidSession(value: unknown): value is StoredSession {
     return false;
   const config = account.config;
   const position = account.position;
+  try {
+    createAccount(config as unknown as TradingState['config']);
+  } catch {
+    return false;
+  }
+  if (
+    account.borrowingPaid !== undefined &&
+    !nonnegative(account.borrowingPaid)
+  )
+    return false;
+  if (
+    account.liquidity !== undefined &&
+    (!record(account.liquidity) ||
+      !timestamp(account.liquidity.time) ||
+      !nonnegative(account.liquidity.remaining))
+  )
+    return false;
+
   if (
     !record(config) ||
     !positive(config.initialCapital) ||
@@ -255,7 +273,9 @@ export function isValidSession(value: unknown): value is StoredSession {
       order.fillPrice !== undefined ||
       order.fee !== undefined ||
       order.realizedPnl !== undefined ||
-      (order.status === 'pending' && order.type === 'market')
+      (order.status === 'pending' &&
+        order.type === 'market' &&
+        !(order.queuedMarket && config.volumeParticipationPct))
     )
       return false;
   }

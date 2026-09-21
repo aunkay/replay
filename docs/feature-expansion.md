@@ -13,7 +13,7 @@ sessions and strategy flows must remain compatible.
 | Alerts | Price crossings, indicator crossings, strategy conditions; notifications and optional replay pause; no future data | Implemented; six desktop/iPhone journeys pass; Live engine tests pass; background coverage pending |
 | Portfolio trading | Trade base and comparisons using shared cash, buying power, positions and portfolio P&L | Pending |
 | Strategy validation | Rolling train/test windows, parameter heatmaps, reproducible Monte Carlo distributions | Implemented; causal selection/bootstrap unit checks and desktop/iPhone worker + heatmap journeys pass |
-| Execution realism | Configurable spread, volume participation/partial fills, short borrowing costs, optional lower-timeframe execution | Pending |
+| Execution realism | Configurable spread, volume participation/partial fills, short borrowing costs, optional lower-timeframe execution | Spread, borrow costs and shared-volume partial fills implemented; finer-candle execution and broader integration remain |
 | Data library / CSV | Server-persisted datasets, validated CSV import, missing-candle inspection, reusable data selection | Implemented; six import/API checks and desktop/iPhone import-inspect-reload-replay journeys pass |
 | Multi-timeframe rules | Per-rule interval selection; only completed higher-timeframe values at signal time | Implemented with causal UTC aggregation; unit boundary/warm-up/future-price tests and desktop/iPhone alert + worker journeys pass |
 | Extended hours | Request/cache/session support; explicit inclusion control; session chart shading | Implemented; cache/calendar API test and desktop/iPhone load-reload-Live journeys; replay-follow regression coverage |
@@ -40,3 +40,5 @@ Alerts evidence: six desktop/iPhone journeys pass for local/server pause and his
 Background evidence: backend restart/recovery/stop test passes; desktop/iPhone journeys close the browser, expire its lease, advance provider data, observe a persisted alert, reconnect and stop the monitor. Opt-in metadata and original pending-command eligibility survive restart.
 
 Data-library evidence: six API tests cover persisted import/read/delete and malformed timestamp/OHLCV rejection. Desktop and iPhone journeys upload a CSV, inspect a known gap, reload, start replay, reject invalid prices and delete the library entry. Imported data has an explicit CSV source label.
+
+Execution phase evidence: 375 unit tests pass; engine cases cover spread, elapsed-time short borrowing, shared volume budgets, queued market remainders and partial protective stops. Defaults preserve existing execution. Finer-candle execution, financing attribution to trade episodes and final execution audit remain.

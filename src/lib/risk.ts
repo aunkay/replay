@@ -18,7 +18,7 @@ export function sizeByRisk(input: {
   const direction = side === 'buy' ? 1 : -1;
   if ((entry - stop) * direction <= 0)
     throw new Error('Stop must be on the loss side of entry.');
-  const slip = config.slippageBps / 10000,
+  const slip = config.slippageBps / 10000 + (config.spreadBps ?? 0) / 20000,
     fee = config.commissionBps / 10000;
   const entryFill = entry * (1 + direction * slip),
     exitFill = stop * (1 - direction * slip);

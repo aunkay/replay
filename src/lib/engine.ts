@@ -31,6 +31,9 @@ export type EngineConfig = {
   initialCapital: number;
   commissionBps: number;
   slippageBps: number;
+  spreadBps?: number;
+  borrowAprPct?: number;
+  volumeParticipationPct?: number;
 };
 export type Order = {
   id: string;
@@ -55,6 +58,8 @@ export type Order = {
   reduceOnly?: boolean;
   ambiguous?: boolean;
   plannedRisk?: number;
+  continuationOf?: string;
+  queuedMarket?: boolean;
 };
 export type Position = { quantity: number; averagePrice: number };
 export type EquityPoint = { time: number; equity: number };
@@ -67,6 +72,8 @@ export type TradingState = {
   realizedPnl: number;
   feesPaid: number;
   recentBars?: Candle[];
+  liquidity?: { time: number; remaining: number };
+  borrowingPaid?: number;
   dynamicProtection?: DynamicProtection;
 };
 export type OrderRequest = Pick<
@@ -156,6 +163,21 @@ export function createAccount(config: EngineConfig): TradingState {
       'Slippage must be at least 0 and less than 10,000 basis points.',
     );
   }
+  for (const [key, max] of [
+    ['spreadBps', 10000],
+    ['borrowAprPct', 1000],
+    ['volumeParticipationPct', 100],
+  ] as const) {
+    const value = config[key];
+    if (
+      value !== undefined &&
+      (!Number.isFinite(value) ||
+        value < 0 ||
+        (value >= max && key === 'spreadBps') ||
+        value > max)
+    )
+      throw new Error(`${key} must be between 0 and ${max}.`);
+  }
   return {
     config: { ...config },
     cash: config.initialCapital,
@@ -193,7 +215,14 @@ function executeFill(
   const direction = order.side === 'buy' ? 1 : -1;
   const slippage =
     order.type === 'limit' ? 0 : state.config.slippageBps / 10_000;
-  const fillPrice = basePrice * (1 + direction * slippage);
+  const spread = (state.config.spreadBps ?? 0) / 20000;
+  const rawPrice = basePrice * (1 + direction * (slippage + spread));
+  const fillPrice =
+    order.type === 'limit'
+      ? order.side === 'buy'
+        ? Math.min(order.price!, rawPrice)
+        : Math.max(order.price!, rawPrice)
+      : rawPrice;
   const notional = order.quantity * fillPrice;
   const fee = notional * (state.config.commissionBps / 10_000);
   const oldQuantity = state.position.quantity;
@@ -295,7 +324,62 @@ function executeFill(
   );
 }
 
+function prepareLiquidity(state: TradingState, bar: Candle): TradingState {
+  const participation = state.config.volumeParticipationPct;
+  if (participation === undefined || participation === 0) return state;
+  if (state.liquidity?.time === bar.time) return state;
+  return {
+    ...state,
+    liquidity: {
+      time: bar.time,
+      remaining: (bar.volume * participation) / 100,
+    },
+  };
+}
 function executeOrder(
+  state: TradingState,
+  order: Order,
+  price: number,
+  time: number,
+): TradingState {
+  if (!state.config.volumeParticipationPct)
+    return executeFullOrder(state, order, price, time);
+  const available =
+    state.liquidity?.time === time ? state.liquidity.remaining : 0;
+  if (available <= 1e-10)
+    return order.type === 'market' || order.type === 'stop'
+      ? replaceOrder(state, { ...order, type: 'market', queuedMarket: true })
+      : state;
+  const quantity = Math.min(order.quantity, available);
+  let next = executeFullOrder(state, { ...order, quantity }, price, time);
+  const fill = next.orders.find((o) => o.id === order.id);
+  if (fill?.status !== 'filled') return next;
+  next = {
+    ...next,
+    liquidity: { time, remaining: Math.max(0, available - fill.quantity) },
+  };
+  const remaining = order.reduceOnly
+    ? Math.min(order.quantity - fill.quantity, Math.abs(next.position.quantity))
+    : order.quantity - fill.quantity;
+  if (remaining > 1e-10) {
+    const continuation: Order = {
+      ...order,
+      id: `order-${next.orders.length + 1}`,
+      quantity: remaining,
+      status: 'pending',
+      createdAt: time,
+      continuationOf: order.continuationOf ?? order.id,
+    };
+    if (order.type === 'stop' || order.type === 'market') {
+      continuation.type = 'market';
+      continuation.queuedMarket = true;
+    }
+    next = { ...next, orders: [...next.orders, continuation] };
+  }
+  return next;
+}
+
+function executeFullOrder(
   state: TradingState,
   order: Order,
   price: number,
@@ -470,23 +554,30 @@ function processProtection(
           (includeCurrent && o.createdAt === bar.time)),
   );
   const touched = candidates.filter((o) =>
-    o.type === 'stop'
-      ? o.side === 'sell'
-        ? bar.low <= o.price!
-        : bar.high >= o.price!
-      : allowTarget &&
-        (o.side === 'sell' ? bar.high >= o.price! : bar.low <= o.price!),
+    o.type === 'market'
+      ? true
+      : o.type === 'stop'
+        ? o.side === 'sell'
+          ? bar.low <= o.price!
+          : bar.high >= o.price!
+        : allowTarget &&
+          (o.side === 'sell'
+            ? bar.high * (1 - (state.config.spreadBps ?? 0) / 20000) >= o.price!
+            : bar.low * (1 + (state.config.spreadBps ?? 0) / 20000) <=
+              o.price!),
   );
-  const chosen = touched.find((o) => o.type === 'stop') ?? touched[0];
+  const chosen = touched.find((o) => o.role === 'stopLoss') ?? touched[0];
   if (!chosen) return state;
   const price =
-    chosen.type === 'stop'
-      ? chosen.side === 'sell'
-        ? Math.min(bar.open, chosen.price!)
-        : Math.max(bar.open, chosen.price!)
-      : chosen.side === 'sell'
-        ? Math.max(bar.open, chosen.price!)
-        : Math.min(bar.open, chosen.price!);
+    chosen.type === 'market'
+      ? bar.open
+      : chosen.type === 'stop'
+        ? chosen.side === 'sell'
+          ? Math.min(bar.open, chosen.price!)
+          : Math.max(bar.open, chosen.price!)
+        : chosen.side === 'sell'
+          ? Math.max(bar.open, chosen.price!)
+          : Math.min(bar.open, chosen.price!);
   const next = executeOrder(
     state,
     {
@@ -500,7 +591,7 @@ function processProtection(
     bar.time,
   );
   // A stopped position never also takes profits on the same ambiguous candle.
-  return chosen.type === 'limit' && next.position.quantity
+  return next !== state && chosen.type === 'limit' && next.position.quantity
     ? processProtection(next, bar, parentId, allowTarget, includeCurrent)
     : next;
 }
@@ -623,7 +714,10 @@ export function submitOrder(
     createdAt: barIsValid ? bar.time : (previousTime ?? 0),
     ...(reason ? { reason } : {}),
   };
-  let next = { ...state, orders: [...state.orders, order] };
+  let next = prepareLiquidity(
+    { ...state, orders: [...state.orders, order] },
+    bar,
+  );
   if (!reason && request.type === 'market')
     next = executeOrder(next, order, bar.close, bar.time);
   if (barIsValid && (previousTime === undefined || bar.time >= previousTime)) {
@@ -646,18 +740,55 @@ export function advanceBar(
   const previousTime = latestTime(state);
   if (!validBar(bar) || (previousTime !== undefined && bar.time < previousTime))
     return state;
-  let next = processProtection(state, bar, undefined, true, protectionAtOpen);
+  let prepared = prepareLiquidity(state, bar);
+  if (
+    state.position.quantity < 0 &&
+    previousTime !== undefined &&
+    bar.time > previousTime &&
+    state.config.borrowAprPct
+  ) {
+    const mark = state.recentBars?.at(-1)?.close ?? state.position.averagePrice;
+    const cost =
+      (((Math.abs(state.position.quantity) * mark * state.config.borrowAprPct) /
+        100) *
+        (bar.time - previousTime)) /
+      (365 * 86400);
+    prepared = {
+      ...prepared,
+      cash: prepared.cash - cost,
+      realizedPnl: prepared.realizedPnl - cost,
+      borrowingPaid: (prepared.borrowingPaid ?? 0) + cost,
+    };
+  }
+  let next = processProtection(
+    prepared,
+    bar,
+    undefined,
+    true,
+    protectionAtOpen,
+  );
   for (const original of state.orders) {
     const order = next.orders.find((o) => o.id === original.id)!;
     if (order.reduceOnly) continue;
     if (order.status !== 'pending' || order.createdAt >= bar.time) continue;
     let basePrice: number | undefined;
     const target = order.price;
+    if (order.type === 'market' && order.queuedMarket) {
+      next = executeOrder(next, order, bar.open, bar.time);
+      next = processProtection(next, bar, order.id, true);
+      continue;
+    }
     if (target === undefined) continue;
     if (order.type === 'limit') {
-      if (order.side === 'buy' && bar.low <= target)
+      if (
+        order.side === 'buy' &&
+        bar.low * (1 + (state.config.spreadBps ?? 0) / 20000) <= target
+      )
         basePrice = Math.min(bar.open, target);
-      if (order.side === 'sell' && bar.high >= target)
+      if (
+        order.side === 'sell' &&
+        bar.high * (1 - (state.config.spreadBps ?? 0) / 20000) >= target
+      )
         basePrice = Math.max(bar.open, target);
     } else if (order.type === 'stop') {
       if (order.side === 'buy' && bar.high >= target)
