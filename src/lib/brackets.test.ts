@@ -184,3 +184,136 @@ it('changing holdout prices cannot change training scores or selection', () => {
   );
   expect(changed.candidates).toEqual(original.candidates);
 });
+
+it('scales out at three targets while retaining a resized stop', () => {
+  let s = submitOrder(
+    createAccount(config),
+    {
+      side: 'buy',
+      type: 'market',
+      quantity: 10,
+      stopLoss: 90,
+      takeProfits: [
+        { price: 105, percent: 30 },
+        { price: 110, percent: 30 },
+        { price: 115, percent: 40 },
+      ],
+    },
+    bar(1),
+  );
+  s = advanceBar(s, bar(2, 100, 106, 99, 105));
+  expect(s.position.quantity).toBe(7);
+  expect(s.orders.find((o) => o.role === 'stopLoss')).toMatchObject({
+    quantity: 7,
+    status: 'pending',
+  });
+  expect(
+    s.orders
+      .filter((o) => o.role === 'takeProfit' && o.status === 'pending')
+      .map((o) => o.quantity),
+  ).toEqual([3, 4]);
+  s = advanceBar(s, bar(3, 105, 116, 104, 115));
+  expect(s.position.quantity).toBe(0);
+  expect(s.cash).toBe(10105);
+  expect(s.orders.filter((o) => o.status === 'pending')).toHaveLength(0);
+});
+it('multiple short targets retain protection and ambiguous stops win', () => {
+  let s = submitOrder(
+    createAccount(config),
+    {
+      side: 'sell',
+      type: 'market',
+      quantity: 10,
+      stopLoss: 110,
+      takeProfits: [
+        { price: 95, percent: 50 },
+        { price: 90, percent: 50 },
+      ],
+    },
+    bar(1),
+  );
+  s = advanceBar(s, bar(2, 100, 101, 94, 95));
+  expect(s.position.quantity).toBe(-5);
+  s = advanceBar(s, bar(3, 100, 112, 88, 100));
+  expect(s.position.quantity).toBe(0);
+  expect(s.cash).toBe(9975);
+  expect(s.orders.find((o) => o.price === 90)?.status).toBe('cancelled');
+});
+it('rejects overallocated and duplicate targets', () => {
+  for (const targets of [
+    [
+      { price: 105, percent: 60 },
+      { price: 110, percent: 60 },
+    ],
+    [
+      { price: 105, percent: 30 },
+      { price: 105, percent: 30 },
+    ],
+  ]) {
+    const s = submitOrder(
+      createAccount(config),
+      { side: 'buy', type: 'market', quantity: 10, takeProfits: targets },
+      bar(1),
+    );
+    expect(s.orders[0].status).toBe('rejected');
+    expect(s.position.quantity).toBe(0);
+  }
+});
+
+it('trailing stops tighten prospectively and never loosen', () => {
+  let s = submitOrder(
+    createAccount(config),
+    {
+      side: 'buy',
+      type: 'market',
+      quantity: 10,
+      dynamicProtection: { trailing: { mode: 'price', distance: 5 } },
+    },
+    bar(1),
+  );
+  expect(s.orders.find((o) => o.role === 'stopLoss')?.price).toBe(95);
+  s = advanceBar(s, bar(2, 100, 112, 99, 110));
+  expect(s.position.quantity).toBe(10);
+  expect(s.orders.find((o) => o.role === 'stopLoss')?.price).toBe(105);
+  s = advanceBar(s, bar(3, 110, 111, 106, 107));
+  expect(s.orders.find((o) => o.role === 'stopLoss')?.price).toBe(105);
+  s = advanceBar(s, bar(4, 103, 104, 100, 102));
+  expect(s.position.quantity).toBe(0);
+  expect(s.cash).toBe(10030);
+  expect(s.dynamicProtection).toBeUndefined();
+});
+it('short break-even activation acts only on a subsequent candle', () => {
+  let s = submitOrder(
+    createAccount(config),
+    {
+      side: 'sell',
+      type: 'market',
+      quantity: 10,
+      dynamicProtection: { breakEvenPct: 2 },
+    },
+    bar(1),
+  );
+  s = advanceBar(s, bar(2, 100, 101, 96, 97));
+  expect(s.position.quantity).toBe(-10);
+  expect(s.orders.find((o) => o.role === 'stopLoss')?.price).toBe(100);
+  s = advanceBar(s, bar(3, 97, 101, 96, 100));
+  expect(s.position.quantity).toBe(0);
+  expect(s.cash).toBe(10000);
+});
+it('ATR trailing waits for causal warm-up and uses a 14 true-range mean', () => {
+  let s = createAccount(config);
+  for (let i = 1; i <= 14; i++) s = advanceBar(s, bar(i, 100, 101, 99, 100));
+  s = submitOrder(
+    s,
+    {
+      side: 'buy',
+      type: 'market',
+      quantity: 10,
+      dynamicProtection: { trailing: { mode: 'atr', distance: 2 } },
+    },
+    bar(14, 100, 101, 99, 100),
+  );
+  expect(s.orders.filter((o) => o.role === 'stopLoss')).toHaveLength(0);
+  s = advanceBar(s, bar(15, 100, 101, 99, 100));
+  expect(s.orders.find((o) => o.role === 'stopLoss')?.price).toBe(96);
+});

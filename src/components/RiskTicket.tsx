@@ -1,9 +1,16 @@
 import { useEffect, useState } from 'react';
 import { sizeByRisk } from '../lib/risk';
-import type { EngineConfig, Side } from '../lib/engine';
+import type {
+  EngineConfig,
+  Side,
+  ProfitTarget,
+  DynamicProtection,
+} from '../lib/engine';
 export type ProtectionDraft = {
   stopLoss?: number;
   takeProfit?: number;
+  takeProfits?: ProfitTarget[];
+  dynamicProtection?: DynamicProtection;
   plannedRisk?: number;
   sizingError?: string;
 };
@@ -36,6 +43,16 @@ export default function RiskTicket({
     [step, setStep] = useState(
       ticker.includes('-') || ticker.includes('=') ? '0.000001' : '1',
     );
+  const [trailingMode, setTrailingMode] = useState('off');
+  const [trailingDistance, setTrailingDistance] = useState('2');
+  const [breakEven, setBreakEven] = useState('');
+  const [multipleTargets, setMultipleTargets] = useState(false);
+  const [targetRows, setTargetRows] = useState([
+    { price: '', percent: '30' },
+    { price: '', percent: '30' },
+    { price: '', percent: '40' },
+  ]);
+  const targetKey = JSON.stringify(targetRows);
   const sign = side === 'buy' ? 1 : -1;
   const stopLoss = stop
     ? unit === 'price'
@@ -72,14 +89,40 @@ export default function RiskTicket({
   }, [calculated, onQuantity]);
   useEffect(() => {
     onChange({
+      dynamicProtection:
+        trailingMode !== 'off' || breakEven
+          ? {
+              trailing:
+                trailingMode !== 'off'
+                  ? {
+                      mode: trailingMode as 'price' | 'percent' | 'atr',
+                      distance: Number(trailingDistance),
+                    }
+                  : undefined,
+              breakEvenPct: breakEven ? Number(breakEven) : undefined,
+            }
+          : undefined,
       stopLoss,
-      takeProfit,
+      takeProfit: multipleTargets ? undefined : takeProfit,
+      takeProfits: multipleTargets
+        ? targetRows
+            .filter((t) => t.price !== '')
+            .map((t) => ({
+              price: Number(t.price),
+              percent: Number(t.percent),
+            }))
+        : undefined,
       sizingError: error || undefined,
       plannedRisk:
         suggestion?.risk ??
         (stopLoss ? Math.abs(entry - stopLoss) * quantity : undefined),
     });
   }, [
+    trailingMode,
+    trailingDistance,
+    breakEven,
+    multipleTargets,
+    targetKey,
     stopLoss,
     takeProfit,
     suggestion?.risk,
@@ -119,18 +162,118 @@ export default function RiskTicket({
           onChange={(e) => setStop(e.target.value)}
         />
       </label>
+      {!multipleTargets && (
+        <label>
+          Take-profit
+          <input
+            aria-label="Take-profit"
+            inputMode="decimal"
+            type="number"
+            min="0"
+            step="any"
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+          />
+        </label>
+      )}
       <label>
-        Take-profit
         <input
-          aria-label="Take-profit"
-          inputMode="decimal"
+          type="checkbox"
+          checked={multipleTargets}
+          onChange={(e) => setMultipleTargets(e.target.checked)}
+        />
+        Multiple take-profit levels
+      </label>
+      {multipleTargets && (
+        <fieldset>
+          <legend>Scale out at up to three prices</legend>
+          <p>
+            Enter absolute prices and percentages of the initial position.
+            Allocations may total up to 100%. The stop protects the remainder.
+          </p>
+          {targetRows.map((row, i) => (
+            <div key={i}>
+              <label>
+                TP{i + 1} price
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={row.price}
+                  onChange={(e) =>
+                    setTargetRows((rows) =>
+                      rows.map((r, j) =>
+                        j === i ? { ...r, price: e.target.value } : r,
+                      ),
+                    )
+                  }
+                />
+              </label>
+              <label>
+                TP{i + 1} allocation %
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="any"
+                  value={row.percent}
+                  onChange={(e) =>
+                    setTargetRows((rows) =>
+                      rows.map((r, j) =>
+                        j === i ? { ...r, percent: e.target.value } : r,
+                      ),
+                    )
+                  }
+                />
+              </label>
+            </div>
+          ))}
+        </fieldset>
+      )}
+      <label>
+        Trailing stop
+        <select
+          aria-label="Trailing stop"
+          value={trailingMode}
+          onChange={(e) => setTrailingMode(e.target.value)}
+        >
+          <option value="off">Off</option>
+          <option value="price">Price distance</option>
+          <option value="percent">Percentage distance</option>
+          <option value="atr">ATR (14) multiple</option>
+        </select>
+      </label>
+      {trailingMode !== 'off' && (
+        <label>
+          Trailing distance
+          <input
+            type="number"
+            min="0"
+            step="any"
+            value={trailingDistance}
+            onChange={(e) => setTrailingDistance(e.target.value)}
+          />
+        </label>
+      )}
+      <label>
+        Break-even activation %
+        <input
           type="number"
           min="0"
           step="any"
-          value={target}
-          onChange={(e) => setTarget(e.target.value)}
+          value={breakEven}
+          placeholder="Off"
+          onChange={(e) => setBreakEven(e.target.value)}
         />
       </label>
+      {(trailingMode !== 'off' || breakEven) && (
+        <p>
+          Stops tighten after each completed candle and apply from the next
+          candle. Break-even means entry price before costs. ATR uses 14 true
+          ranges and waits for 15 observed candles; set an initial stop for
+          warm-up protection.
+        </p>
+      )}
       {sizing !== 'manual' && (
         <>
           <label>

@@ -32,6 +32,7 @@ export default defineConfig({
         '**/iphone.spec.ts',
         '**/volume.spec.ts',
         '**/practice.spec.ts',
+        '**/advanced-trading.spec.ts',
         '**/insecure-origin.spec.ts',
         '**/replay-follow.spec.ts',
         '**/comparison-price.spec.ts',

@@ -18,6 +18,12 @@ export type Candle = {
   complete?: boolean;
 };
 
+export type DynamicProtection = {
+  trailing?: { mode: 'price' | 'percent' | 'atr'; distance: number };
+  breakEvenPct?: number;
+};
+export type ProfitTarget = { price: number; percent: number };
+
 export type Side = 'buy' | 'sell';
 export type OrderType = 'market' | 'limit' | 'stop';
 export type EngineConfig = {
@@ -41,6 +47,8 @@ export type Order = {
   reason?: string;
   stopLoss?: number;
   takeProfit?: number;
+  takeProfits?: ProfitTarget[];
+  dynamicProtection?: DynamicProtection;
   parentId?: string;
   role?: 'stopLoss' | 'takeProfit';
   reduceOnly?: boolean;
@@ -57,6 +65,8 @@ export type TradingState = {
   equityHistory: EquityPoint[];
   realizedPnl: number;
   feesPaid: number;
+  recentBars?: Candle[];
+  dynamicProtection?: DynamicProtection;
 };
 export type OrderRequest = Pick<
   Order,
@@ -66,6 +76,8 @@ export type OrderRequest = Pick<
   | 'price'
   | 'stopLoss'
   | 'takeProfit'
+  | 'takeProfits'
+  | 'dynamicProtection'
   | 'plannedRisk'
 >;
 export type TradingMetrics = {
@@ -303,16 +315,38 @@ function executeOrder(
   if (next.orders.find((o) => o.id === order.id)?.status !== 'filled')
     return next;
   const replaced =
-    order.stopLoss !== undefined || order.takeProfit !== undefined;
+    order.stopLoss !== undefined ||
+    order.takeProfit !== undefined ||
+    Boolean(order.takeProfits?.length);
+  if (
+    !next.position.quantity ||
+    (state.position.quantity &&
+      Math.sign(state.position.quantity) !== Math.sign(next.position.quantity))
+  )
+    next = { ...next, dynamicProtection: undefined };
+  if (order.dynamicProtection && !order.reduceOnly)
+    next = {
+      ...next,
+      dynamicProtection: structuredClone(order.dynamicProtection),
+    };
   const reversed =
     Math.sign(state.position.quantity) !== Math.sign(next.position.quantity);
   next = {
     ...next,
     orders: next.orders.map((o) =>
       o.status === 'pending' && o.reduceOnly
-        ? !next.position.quantity || order.reduceOnly || replaced || reversed
+        ? !next.position.quantity ||
+          (order.reduceOnly && order.role !== 'takeProfit') ||
+          replaced ||
+          reversed
           ? { ...o, status: 'cancelled' as const }
-          : { ...o, quantity: Math.abs(next.position.quantity) }
+          : {
+              ...o,
+              quantity:
+                o.role === 'takeProfit'
+                  ? Math.min(o.quantity, Math.abs(next.position.quantity))
+                  : Math.abs(next.position.quantity),
+            }
         : o,
     ),
   };
@@ -330,6 +364,20 @@ function executeOrder(
         createdAt: time,
         parentId: order.id,
         role,
+        reduceOnly: true,
+      });
+    }
+    for (const target of order.takeProfits ?? []) {
+      children.push({
+        id: `order-${next.orders.length + children.length + 1}`,
+        side: next.position.quantity > 0 ? 'sell' : 'buy',
+        type: 'limit',
+        quantity: (Math.abs(next.position.quantity) * target.percent) / 100,
+        price: target.price,
+        status: 'pending',
+        createdAt: time,
+        parentId: order.id,
+        role: 'takeProfit',
         reduceOnly: true,
       });
     }
@@ -438,15 +486,22 @@ function processProtection(
       : chosen.side === 'sell'
         ? Math.max(bar.open, chosen.price!)
         : Math.min(bar.open, chosen.price!);
-  return executeOrder(
+  const next = executeOrder(
     state,
     {
       ...chosen,
-      ambiguous: touched.length > 1 || Boolean(parentId && !allowTarget),
+      ambiguous:
+        (touched.some((o) => o.type === 'stop') &&
+          touched.some((o) => o.type === 'limit')) ||
+        Boolean(parentId && !allowTarget),
     },
     price,
     bar.time,
   );
+  // A stopped position never also takes profits on the same ambiguous candle.
+  return chosen.type === 'limit' && next.position.quantity
+    ? processProtection(next, bar, parentId, allowTarget, includeCurrent)
+    : next;
 }
 
 /** Returns a new state; the submitted order is the final entry in `orders`. */
@@ -474,6 +529,53 @@ export function submitOrder(
 
   if (!reason) {
     try {
+      if (request.dynamicProtection) {
+        const { trailing, breakEvenPct } = request.dynamicProtection;
+        if (breakEvenPct !== undefined && !finitePositive(breakEvenPct))
+          throw new Error('Break-even activation must be positive.');
+        if (
+          trailing &&
+          (!['price', 'percent', 'atr'].includes(trailing.mode) ||
+            !finitePositive(trailing.distance) ||
+            (trailing.mode === 'percent' && trailing.distance >= 100))
+        )
+          throw new Error(
+            'Choose a valid positive trailing distance (percentage below 100).',
+          );
+      }
+      if (request.takeProfits !== undefined) {
+        if (
+          !Array.isArray(request.takeProfits) ||
+          request.takeProfits.length > 3 ||
+          (request.takeProfits.length && request.takeProfit !== undefined)
+        )
+          throw new Error(
+            'Use either one take-profit or up to three target levels.',
+          );
+        let total = 0;
+        const prices = new Set<number>();
+        for (const target of request.takeProfits) {
+          if (
+            !target ||
+            !finitePositive(target.percent) ||
+            target.percent > 100 ||
+            prices.has(target.price)
+          )
+            throw new Error(
+              'Targets require distinct prices and positive allocations.',
+            );
+          validateProtection(
+            request.side,
+            request.type === 'market' ? bar.close : request.price!,
+            undefined,
+            target.price,
+          );
+          prices.add(target.price);
+          total += target.percent;
+        }
+        if (total > 100 + 1e-8)
+          throw new Error('Target allocations cannot exceed 100%.');
+      }
       validateProtection(
         request.side,
         request.type === 'market' ? bar.close : request.price!,
@@ -489,12 +591,19 @@ export function submitOrder(
         (request.side === 'buy' ? 1 : -1) &&
       state.orders.some((o) => o.reduceOnly && o.status === 'pending') &&
       request.stopLoss === undefined &&
-      request.takeProfit === undefined
+      request.takeProfit === undefined &&
+      !request.takeProfits?.length
     )
       reason =
         'Provide replacement protection levels when scaling into a protected position.';
   }
   const order: Order = {
+    ...(!reason && request.dynamicProtection
+      ? { dynamicProtection: structuredClone(request.dynamicProtection) }
+      : {}),
+    ...(!reason && request.takeProfits?.length
+      ? { takeProfits: request.takeProfits.map((t) => ({ ...t })) }
+      : {}),
     ...(request.stopLoss !== undefined ? { stopLoss: request.stopLoss } : {}),
     ...(request.takeProfit !== undefined
       ? { takeProfit: request.takeProfit }
@@ -516,8 +625,11 @@ export function submitOrder(
   let next = { ...state, orders: [...state.orders, order] };
   if (!reason && request.type === 'market')
     next = executeOrder(next, order, bar.close, bar.time);
-  if (barIsValid && (previousTime === undefined || bar.time >= previousTime))
+  if (barIsValid && (previousTime === undefined || bar.time >= previousTime)) {
+    if (!reason && request.type === 'market')
+      next = updateDynamicProtection(next, bar);
     next = withEquity(next, bar);
+  }
   return next;
 }
 
@@ -557,7 +669,96 @@ export function advanceBar(
       next = processProtection(next, bar, order.id, basePrice === bar.open);
     }
   }
+  // Update stops only after executing this candle: new levels cannot act on
+  // a high/low that occurred before the completed-candle observation.
+  next = updateDynamicProtection(next, bar);
   return withEquity(next, bar);
+}
+
+function updateDynamicProtection(
+  state: TradingState,
+  bar: Candle,
+): TradingState {
+  const recentBars = [
+    ...(state.recentBars ?? []).filter((b) => b.time < bar.time),
+    bar,
+  ].slice(-15);
+  let next = { ...state, recentBars };
+  if (!state.position.quantity || !state.dynamicProtection) return next;
+  const direction = Math.sign(state.position.quantity);
+  const { trailing, breakEvenPct } = state.dynamicProtection;
+  let level: number | undefined;
+  if (trailing) {
+    let distance: number | undefined;
+    if (trailing.mode === 'price') distance = trailing.distance;
+    if (trailing.mode === 'percent')
+      distance = (bar.close * trailing.distance) / 100;
+    if (trailing.mode === 'atr' && recentBars.length === 15) {
+      distance =
+        (recentBars
+          .slice(1)
+          .reduce(
+            (sum, b, i) =>
+              sum +
+              Math.max(
+                b.high - b.low,
+                Math.abs(b.high - recentBars[i].close),
+                Math.abs(b.low - recentBars[i].close),
+              ),
+            0,
+          ) /
+          14) *
+        trailing.distance;
+    }
+    if (distance !== undefined) level = bar.close - direction * distance;
+  }
+  const entry = state.position.averagePrice;
+  if (
+    breakEvenPct !== undefined &&
+    (((bar.close - entry) * direction) / entry) * 100 >= breakEvenPct
+  ) {
+    level =
+      level === undefined
+        ? entry
+        : direction > 0
+          ? Math.max(level, entry)
+          : Math.min(level, entry);
+  }
+  if (level === undefined || !finitePositive(level)) return next;
+  const existing = state.orders.find(
+    (o) => o.role === 'stopLoss' && o.status === 'pending',
+  );
+  if (existing) {
+    const improved =
+      direction > 0
+        ? Math.max(existing.price!, level)
+        : Math.min(existing.price!, level);
+    next = {
+      ...next,
+      orders: next.orders.map((o) =>
+        o.id === existing.id ? { ...o, price: improved } : o,
+      ),
+    };
+  } else {
+    next = {
+      ...next,
+      orders: [
+        ...next.orders,
+        {
+          id: `order-${next.orders.length + 1}`,
+          side: direction > 0 ? 'sell' : 'buy',
+          type: 'stop',
+          quantity: Math.abs(state.position.quantity),
+          price: level,
+          status: 'pending',
+          createdAt: bar.time,
+          role: 'stopLoss',
+          reduceOnly: true,
+        },
+      ],
+    };
+  }
+  return next;
 }
 
 export function cancelOrder(state: TradingState, id: string): TradingState {

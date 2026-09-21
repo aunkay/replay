@@ -31,6 +31,16 @@ const timestamp = (value: unknown): value is number =>
   Number.isSafeInteger(value) &&
   value >= MIN_TIME &&
   value <= MAX_TIME;
+function validDynamic(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!record(value)) return false;
+  if (value.breakEvenPct !== undefined && !positive(value.breakEvenPct)) return false;
+  if (value.trailing !== undefined) {
+    const t = value.trailing;
+    if (!record(t) || !['price','percent','atr'].includes(String(t.mode)) || !positive(t.distance) || (t.mode === 'percent' && t.distance >= 100)) return false;
+  }
+  return true;
+}
 /** Validate untrusted browser storage before it reaches accounting and charts. */
 export function isValidSession(value: unknown): value is StoredSession {
   if (
@@ -48,7 +58,10 @@ export function isValidSession(value: unknown): value is StoredSession {
   )
     return false;
 
+  const currentTime = value.market.bars[value.cursor].time;
   const account = value.account;
+  if (!validDynamic(account.dynamicProtection)) return false;
+  if (account.recentBars !== undefined && (!Array.isArray(account.recentBars) || account.recentBars.length > 15 || account.recentBars.some(b => !record(b) || !timestamp(b.time) || b.time > currentTime || !positive(b.high) || !positive(b.low) || !positive(b.close)))) return false;
   const config = account.config;
   const position = account.position;
   if (
@@ -104,6 +117,20 @@ export function isValidSession(value: unknown): value is StoredSession {
       (order.realizedPnl !== undefined && !finite(order.realizedPnl))
     )
       return false;
+    if (!validDynamic(order.dynamicProtection)) return false;
+    if (order.takeProfits !== undefined) {
+      if (!Array.isArray(order.takeProfits) || order.takeProfits.length > 3 ||
+          (order.takeProfits.length > 0 && order.takeProfit !== undefined)) return false;
+      let allocation = 0;
+      const prices = new Set<number>();
+      for (const target of order.takeProfits) {
+        if (!record(target) || !positive(target.price) || !positive(target.percent) ||
+            target.percent > 100 || prices.has(target.price)) return false;
+        prices.add(target.price);
+        allocation += target.percent;
+      }
+      if (allocation > 100 + 1e-8) return false;
+    }
     ids.add(order.id);
     if (
       order.status !== 'rejected' &&
