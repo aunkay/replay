@@ -75,6 +75,8 @@ export type TradingState = {
   recentBars?: Candle[];
   liquidity?: { time: number; remaining: number };
   borrowingPaid?: number;
+  financing?: { time: number; amount: number; tradeId: string }[];
+  positionTradeId?: string;
   lastBorrowTime?: number;
   executionClock?: { base: number; end: number };
   executionCoverage?: { fine: number; fallback: number };
@@ -321,11 +323,33 @@ function executeFill(
       ...state,
       cash,
       position: { quantity, averagePrice },
+      positionTradeId:
+        quantity === 0
+          ? undefined
+          : oldQuantity === 0 || Math.sign(oldQuantity) !== Math.sign(quantity)
+            ? order.id
+            : state.positionTradeId,
       realizedPnl,
       feesPaid,
     },
     filled,
   );
+}
+
+function currentTradeId(state: TradingState) {
+  let quantity = 0,
+    id = '';
+  for (const o of state.orders
+    .filter((o) => o.status === 'filled')
+    .sort(
+      (a, b) =>
+        (a.executionTime ?? a.filledAt!) - (b.executionTime ?? b.filledAt!),
+    )) {
+    const next = quantity + (o.side === 'buy' ? o.quantity : -o.quantity);
+    if (quantity === 0 || Math.sign(next) !== Math.sign(quantity)) id = o.id;
+    quantity = next;
+  }
+  return id;
 }
 
 function prepareLiquidity(state: TradingState, bar: Candle): TradingState {
@@ -774,6 +798,14 @@ export function advanceBar(
       cash: prepared.cash - cost,
       realizedPnl: prepared.realizedPnl - cost,
       borrowingPaid: (prepared.borrowingPaid ?? 0) + cost,
+      financing: [
+        ...(prepared.financing ?? []),
+        {
+          time: bar.time,
+          amount: cost,
+          tradeId: state.positionTradeId ?? currentTradeId(state),
+        },
+      ],
     };
   }
   let next = processProtection(
@@ -831,7 +863,8 @@ export function advanceWithSubBars(
   bars: Candle[],
 ): TradingState {
   let next = state;
-  for (const child of bars) next = advanceBar(next, child, false, true);
+  for (let i = 0; i < bars.length; i++)
+    next = advanceBar(next, bars[i], i === 0, true);
   const remainingLiquidity = next.liquidity?.remaining ?? 0;
   next = {
     ...next,

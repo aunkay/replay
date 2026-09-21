@@ -164,6 +164,18 @@ export function isValidSession(value: unknown): value is StoredSession {
       ))
   )
     return false;
+  if (
+    account.financing !== undefined &&
+    (!Array.isArray(account.financing) ||
+      account.financing.some(
+        (f) =>
+          !record(f) ||
+          !timestamp(f.time) ||
+          !nonnegative(f.amount) ||
+          !nonemptyText(f.tradeId),
+      ))
+  )
+    return false;
   const config = account.config;
   const position = account.position;
   try {

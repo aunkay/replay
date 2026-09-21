@@ -83,6 +83,22 @@ test('finer dataset resolves a target before the parent candle stop and survives
     .toBe('filled');
   await page.reload();
   expect((await savedSession(page)).account.executionCoverage?.fine).toBe(1);
+  await page
+    .getByRole('button', { name: 'Practice & research', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Strategy lab', exact: true }).click();
+  await expect(page.getByText(/Finer execution: 1m/)).toBeVisible();
+  await page
+    .getByText('6. Trailing stops & staged exits', { exact: true })
+    .click();
+  await page
+    .getByLabel('Strategy trailing stop', { exact: true })
+    .selectOption('percent');
+  await page.getByLabel('Use staged strategy targets').check();
+  await page.getByRole('button', { name: 'Run backtest', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Backtest results', exact: true }),
+  ).toBeVisible({ timeout: 15000 });
   await request.delete(`/api/datasets/${base.id}`);
   await request.delete(`/api/datasets/${fine.id}`);
 });

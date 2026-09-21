@@ -6,6 +6,7 @@ export type ClosedTrade = {
   closedAt: number;
   pnl: number;
   fees: number;
+  borrowing: number;
   risk: number;
   r: number | null;
   orderIds: string[];
@@ -16,6 +17,7 @@ export type ClosedTrade = {
 export function closedTrades(
   orders: Order[],
   bars: Candle[] = [],
+  financing: { tradeId: string; amount: number }[] = [],
 ): ClosedTrade[] {
   let quantity = 0,
     cash = 0,
@@ -50,15 +52,19 @@ export function closedTrades(
           (b) => b.time > openedAt && b.time <= o.filledAt!,
         );
         const sign = direction === 'long' ? 1 : -1;
+        const borrowing = financing
+          .filter((f) => f.tradeId === ids[0])
+          .reduce((sum, f) => sum + f.amount, 0);
         result.push({
           id: ids[0],
           direction,
           openedAt,
           closedAt: o.filledAt!,
-          pnl: cash,
+          pnl: cash - borrowing,
+          borrowing,
           fees,
           risk,
-          r: risk > 0 ? cash / risk : null,
+          r: risk > 0 ? (cash - borrowing) / risk : null,
           orderIds: [...ids],
           ambiguous,
           mfe: Math.max(

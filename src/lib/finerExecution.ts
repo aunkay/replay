@@ -72,11 +72,12 @@ export function advanceExecution(
   bar: Candle,
   nextTime?: number,
   finer?: MarketData,
+  protectionAtOpen = false,
 ) {
   const candles = finer ? finerBarsForCandle(bar, nextTime, finer) : [];
   const next = candles.length
     ? advanceWithSubBars(state, bar, candles)
-    : advanceBar(state, bar);
+    : advanceBar(state, bar, protectionAtOpen);
   return finer
     ? {
         ...next,

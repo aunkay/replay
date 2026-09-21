@@ -1,3 +1,4 @@
+import StrategyProtection from './StrategyProtection';
 import ResearchResults from './ResearchResults';
 import { RULE_INTERVALS, type RuleInterval } from '../lib/timeframes';
 import { useEffect, useState } from 'react';
@@ -258,7 +259,13 @@ export function RuleEditor({
     </fieldset>
   );
 }
-export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
+export default function StrategyBuilder({
+  bars,
+  finerMarket,
+}: {
+  bars: Candle[];
+  finerMarket?: import('../lib/data').MarketData;
+}) {
   const [strategy, setStrategy] = useState<Strategy>(() =>
       structuredClone(STRATEGY_TEMPLATES[0].strategy),
     ),
@@ -339,7 +346,7 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
       if (parameters.reduce((n, p) => n * p.values.length, 1) > 500)
         throw new Error('Maximum 500 combined parameter combinations');
       const r = await api('/strategy-runs', {
-        strategy,
+        strategy: { ...strategy, executionMarket: finerMarket },
         bars,
         parameters,
         split: split / 100,
@@ -377,6 +384,12 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
     <section className="strategy-builder">
       <h3>Visual strategy testing</h3>
       <p>
+        {finerMarket && (
+          <span>
+            Finer execution: {finerMarket.interval} (unmatched windows use
+            conservative fills).{' '}
+          </span>
+        )}
         Signals at candle close; fills at the next open. One position, no
         pyramiding. Results use the loaded historical snapshot.
       </p>
@@ -757,6 +770,7 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
       {output && (
         <ResearchResults output={output} parameters={output.parameters ?? []} />
       )}
+      <StrategyProtection strategy={strategy} onChange={setStrategy} />
       <div className="hub-actions strategy-run-actions">
         <button disabled={busy} onClick={saveStrategy}>
           Save strategy
@@ -803,6 +817,13 @@ export default function StrategyBuilder({ bars }: { bars: Candle[] }) {
             {summary.performance?.sharpe?.toFixed(2) ?? 'N/A'} · Trades{' '}
             {summary.trades.length} · Conflicting signals {summary.conflicts}
           </p>
+          {summary.account.position.quantity !== 0 && (
+            <p>
+              Evaluation ended with {summary.account.position.quantity} units
+              marked at the last close because the volume limit prevented full
+              liquidation. Monte Carlo uses closed trades only.
+            </p>
+          )}
           <p>
             {summary.performance
               ? `Sharpe: ${summary.performance.sampling}, ${summary.performance.periodsPerYear} periods/year, ${summary.performance.observations} returns, 0% risk-free rate.`

@@ -79,3 +79,27 @@ it('falls back rather than trusting missing finer volume', () => {
   });
   expect(result.executionCoverage).toEqual({ fine: 0, fallback: 1 });
 });
+it('strategy entries protect the first finer candle and preserve target-before-stop ordering', async () => {
+  const { defaultStrategy, runStrategy } = await import('./strategy');
+  const strategy = {
+    ...defaultStrategy(),
+    quantity: 10,
+    stopPct: 5,
+    targetPct: 7,
+    config: { initialCapital: 10000, commissionBps: 0, slippageBps: 0 },
+    longEntry: {
+      join: 'and' as const,
+      conditions: [
+        {
+          left: { kind: 'constant' as const, value: 1 },
+          op: 'gt' as const,
+          right: { kind: 'constant' as const, value: 0 },
+        },
+      ],
+    },
+    executionMarket: fine,
+  };
+  const result = runStrategy(strategy, base.bars);
+  expect(result.metrics.totalPnl).toBe(70);
+  expect(result.account.executionCoverage?.fine).toBe(1);
+});

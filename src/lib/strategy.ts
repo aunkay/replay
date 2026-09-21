@@ -1,3 +1,5 @@
+import { advanceExecution, finerBarsForCandle } from './finerExecution';
+import { isValidMarketData, type MarketData } from './data';
 import {
   aggregateTimeframe,
   candleDuration,
@@ -31,6 +33,9 @@ export type Condition = {
 export type Rule = { join: 'and' | 'or'; conditions: Condition[] };
 export type Strategy = {
   version: 1;
+  executionMarket?: MarketData;
+  dynamicProtection?: import('./engine').DynamicProtection;
+  profitTargets?: { gainPct: number; percent: number }[];
   name: string;
   longEntry: Rule;
   shortEntry: Rule;
@@ -56,6 +61,48 @@ export function validateStrategy(strategy: Strategy) {
   if (!strategy || strategy.version !== 1 || typeof strategy.name !== 'string')
     throw new Error('Invalid strategy definition');
   createAccount(strategy.config);
+  const dynamic = strategy.dynamicProtection;
+  if (dynamic) {
+    if (
+      dynamic.breakEvenPct !== undefined &&
+      (!Number.isFinite(dynamic.breakEvenPct) || dynamic.breakEvenPct <= 0)
+    )
+      throw new Error('Break-even activation must be positive.');
+    const t = dynamic.trailing;
+    if (
+      t &&
+      (!['price', 'percent', 'atr'].includes(t.mode) ||
+        !Number.isFinite(t.distance) ||
+        t.distance <= 0 ||
+        (t.mode === 'percent' && t.distance >= 100))
+    )
+      throw new Error('Invalid trailing distance.');
+  }
+  if (strategy.profitTargets) {
+    if (
+      !Array.isArray(strategy.profitTargets) ||
+      strategy.profitTargets.length > 3 ||
+      strategy.profitTargets.some(
+        (t) =>
+          !Number.isFinite(t.gainPct) ||
+          t.gainPct <= 0 ||
+          t.gainPct >= 100 ||
+          !Number.isFinite(t.percent) ||
+          t.percent <= 0,
+      ) ||
+      strategy.profitTargets.reduce((sum, t) => sum + t.percent, 0) > 100 ||
+      new Set(strategy.profitTargets.map((t) => t.gainPct)).size !==
+        strategy.profitTargets.length
+    )
+      throw new Error(
+        'Use up to three distinct positive profit percentages with allocations totaling at most 100%.',
+      );
+  }
+  if (
+    strategy.executionMarket !== undefined &&
+    !isValidMarketData(strategy.executionMarket)
+  )
+    throw new Error('Invalid finer execution dataset');
   if (!Number.isFinite(strategy.quantity) || strategy.quantity <= 0)
     throw new Error('Quantity must be positive');
   for (const field of [
@@ -236,7 +283,16 @@ export function runStrategy(
       short = matches(strategy.shortEntry, signalIndex);
     // Signal exits and new market entries use the next open. The whole candle is
     // then processed for protection; no signal can execute on its own close.
-    const openBar = { ...bar, high: bar.open, low: bar.open, close: bar.open };
+    const finer = strategy.executionMarket
+      ? finerBarsForCandle(bar, bars[i + 1]?.time, strategy.executionMarket)
+      : [];
+    const openBar = {
+      ...bar,
+      high: bar.open,
+      low: bar.open,
+      close: bar.open,
+      volume: finer[0]?.volume ?? bar.volume,
+    };
     if (
       (state.position.quantity > 0 &&
         matches(strategy.longExit, signalIndex)) ||
@@ -281,19 +337,34 @@ export function runStrategy(
                     strategy.allocationPct) /
                     100 /
                     (bar.open *
-                      (1 + state.config.slippageBps / 10000) *
+                      (1 +
+                        state.config.slippageBps / 10000 +
+                        (state.config.spreadBps ?? 0) / 20000) *
                       (1 + state.config.commissionBps / 10000))) *
                     1e6,
                 ) / 1e6
               : strategy.quantity),
           stopLoss,
-          takeProfit,
+          takeProfit: strategy.profitTargets?.length ? undefined : takeProfit,
+          takeProfits: strategy.profitTargets?.map((t) => ({
+            price: bar.open * (1 + (sign * t.gainPct) / 100),
+            percent: t.percent,
+          })),
+          dynamicProtection: strategy.dynamicProtection,
           plannedRisk: sizing?.risk,
         },
         openBar,
       );
     }
-    state = advanceBar(state, bar, true);
+    state = strategy.executionMarket
+      ? advanceExecution(
+          state,
+          bar,
+          bars[i + 1]?.time,
+          strategy.executionMarket,
+          true,
+        )
+      : advanceBar(state, bar, true);
     if (i % 500 === 0 || i === end - 1) progress?.(i - start + 1, end - start);
   }
   if (state.position.quantity) state = closePosition(state, bars[end - 1]);
@@ -305,7 +376,11 @@ export function runStrategy(
         : o,
     ),
   };
-  const trades = closedTrades(state.orders, bars.slice(start, end));
+  const trades = closedTrades(
+    state.orders,
+    bars.slice(start, end),
+    state.financing,
+  );
   return {
     account: state,
     metrics: getMetrics(state, bars[end - 1].close),

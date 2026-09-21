@@ -154,6 +154,7 @@ export default function WorkspaceHub({
       closedTrades(
         session.account.orders,
         session.market.bars.slice(0, session.cursor + 1),
+        session.account.financing,
       ),
     [session],
   );
@@ -387,6 +388,7 @@ export default function WorkspaceHub({
         closedAt: 0,
         pnl: 0,
         fees: 0,
+        borrowing: 0,
         risk: entry.plannedRisk ?? 0,
         r: null,
         orderIds: [entry.id],
@@ -783,6 +785,7 @@ export default function WorkspaceHub({
                               'Exit',
                               'Net P&L',
                               'Fees',
+                              'Borrowing',
                               'Risk',
                               'R',
                               'Ambiguous',
@@ -794,6 +797,7 @@ export default function WorkspaceHub({
                               t.closedAt,
                               t.pnl,
                               t.fees,
+                              t.borrowing,
                               t.risk,
                               t.r ?? '',
                               t.ambiguous ? 'yes' : 'no',
@@ -982,7 +986,10 @@ export default function WorkspaceHub({
                   </>
                 )}
                 <div hidden={tab !== 'strategies'}>
-                  <StrategyBuilder bars={session.market.bars} />
+                  <StrategyBuilder
+                    bars={session.market.bars}
+                    finerMarket={session.finerMarket}
+                  />
                 </div>
               </div>
             </div>

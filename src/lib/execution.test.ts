@@ -61,3 +61,52 @@ it('zero volume cannot fill orders or recurse through profit targets', () => {
   s = advanceBar(s, bar(2, 110, 0));
   expect(s.position.quantity).toBe(5);
 });
+
+it('financing is attributed to the correct closed trade episode', async () => {
+  const { closedTrades } = await import('./analytics');
+  let s = submitOrder(
+    createAccount({ ...config, borrowAprPct: 36.5 }),
+    { side: 'sell', type: 'market', quantity: 10 },
+    bar(1),
+  );
+  s = advanceBar(s, bar(86401));
+  s = submitOrder(s, { side: 'buy', type: 'market', quantity: 10 }, bar(86401));
+  const trades = closedTrades(s.orders, [], s.financing);
+  expect(trades).toHaveLength(1);
+  expect(trades[0].borrowing).toBeCloseTo(1);
+  expect(trades[0].pnl).toBeCloseTo(s.cash - config.initialCapital);
+});
+it('strategies pass staged exits and trailing rules to the shared engine', async () => {
+  const { defaultStrategy, runStrategy } = await import('./strategy');
+  const s = {
+    ...defaultStrategy(),
+    config,
+    quantity: 10,
+    profitTargets: [
+      { gainPct: 1, percent: 30 },
+      { gainPct: 2, percent: 30 },
+      { gainPct: 3, percent: 40 },
+    ],
+    dynamicProtection: { trailing: { mode: 'percent' as const, distance: 5 } },
+    longEntry: {
+      join: 'and' as const,
+      conditions: [
+        {
+          left: { kind: 'constant' as const, value: 1 },
+          op: 'gt' as const,
+          right: { kind: 'constant' as const, value: 0 },
+        },
+      ],
+    },
+  };
+  const result = runStrategy(s, [
+    bar(1),
+    { ...bar(2), high: 104, low: 100, close: 104 },
+  ]);
+  expect(
+    result.account.orders.filter(
+      (o) => o.role === 'takeProfit' && o.status === 'filled',
+    ),
+  ).toHaveLength(3);
+  expect(result.metrics.totalPnl).toBeCloseTo(21);
+});
