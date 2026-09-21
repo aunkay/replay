@@ -34,6 +34,7 @@ export default defineConfig({
         '**/practice.spec.ts',
         '**/advanced-trading.spec.ts',
         '**/checkpoints.spec.ts',
+        '**/alerts.spec.ts',
         '**/insecure-origin.spec.ts',
         '**/replay-follow.spec.ts',
         '**/comparison-price.spec.ts',

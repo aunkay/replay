@@ -119,23 +119,8 @@ export function validateStrategy(strategy: Strategy) {
     }
   }
 }
-export function runStrategy(
-  strategy: Strategy,
-  bars: Candle[],
-  start = 1,
-  end = bars.length,
-  progress?: (done: number, total: number) => void,
-): StrategyResult {
-  validateStrategy(strategy);
-  if (
-    bars.length < 2 ||
-    bars.length > 100000 ||
-    start < 1 ||
-    end > bars.length ||
-    start >= end
-  )
-    throw new Error('Choose 2–100,000 candles and a valid evaluation range.');
-  let state = advanceBar(createAccount(strategy.config), bars[start - 1]);
+/** Evaluates rules using only the supplied candle history. */
+export function createRuleEvaluator(bars: Candle[]) {
   const operands = new Map<string, Map<number, number>>();
   function value(operand: Operand, index: number): number | undefined {
     index -= operand.offset ?? 0;
@@ -189,6 +174,27 @@ export function runStrategy(
       ? conditions.every(Boolean)
       : conditions.some(Boolean);
   }
+  return matches;
+}
+
+export function runStrategy(
+  strategy: Strategy,
+  bars: Candle[],
+  start = 1,
+  end = bars.length,
+  progress?: (done: number, total: number) => void,
+): StrategyResult {
+  validateStrategy(strategy);
+  if (
+    bars.length < 2 ||
+    bars.length > 100000 ||
+    start < 1 ||
+    end > bars.length ||
+    start >= end
+  )
+    throw new Error('Choose 2–100,000 candles and a valid evaluation range.');
+  let state = advanceBar(createAccount(strategy.config), bars[start - 1]);
+  const matches = createRuleEvaluator(bars);
   let conflicts = 0;
   for (let i = start; i < end; i++) {
     const bar = bars[i],

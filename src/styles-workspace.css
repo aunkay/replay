@@ -1232,3 +1232,11 @@
   cursor: pointer;
 }
 .chart-follow-latest[aria-pressed='true'] { opacity: 0.7; }
+
+.alerts-panel { flex-basis: 100%; min-width: 0; border: 1px solid #333c50; border-radius: 8px; padding: 10px; }
+.alerts-panel summary { cursor: pointer; min-height: 32px; }
+.alerts-panel section { display: grid; gap: 12px; }
+.alerts-panel label { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.alerts-panel input, .alerts-panel select { max-width: 100%; min-width: 0; }
+.alerts-panel article { padding: 10px; border: 1px solid #333c50; border-radius: 6px; }
+.alerts-panel .rule-operand { min-width: 0; }

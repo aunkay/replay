@@ -14,6 +14,14 @@ Filled entries can create reduce-only stop and target children. They protect the
 
 Candle OHLC cannot reveal the path inside a candle. If both exits are touched, the simulator uses the stop first and flags ambiguity. Gap-through stops fill at the opening price with configured costs. An intrabar pending entry can hit its stop on the same candle; its target cannot fill on that candle unless the entry occurred at the open. Edits apply prospectively. Market orders in manual replay fill at the revealed close.
 
+## Market alerts
+
+Expand **Alerts** above the workspace. Enter a name and configure price, volume, indicator or constant operands, with above/below or crossover operators. Combine conditions with AND/OR, or load a strategy template's long-entry rule and customize it. Indicator conditions wait for their normal warm-up. Alerts use the base ticker and current interval.
+
+Alerts evaluate completed revealed candles after creation, fire once, and record their name, time and price in the session's last 200 events. **Pause replay when triggered** stops both playback and a forward seek at the triggering candle. Notification-only alerts let replay continue. **Rearm alert** watches again from the current candle. The workspace shows an in-app notification; OS notifications are not required.
+
+Definitions and history persist with browser and server sessions, exports and checkpoints. Live alerts evaluate completed candles, not provisional prices; acknowledged data gaps do not emit retrospective alerts. Pause applies to replay, while Live continues collecting data. Up to 30 alerts are supported per session.
+
 ## Replay bookmarks and checkpoints
 
 In **Practice & research → Sessions**, enter a checkpoint name and choose **Save checkpoint** before trying a trade. A checkpoint stores the current replay candle and exact account state, including cash, positions, pending orders and protective rules. **Restore checkpoint** pauses playback and returns to that state. Checkpoints are bound to the session dataset; a new dataset starts a new set. Each session supports up to 20 checkpoints.

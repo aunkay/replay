@@ -10,7 +10,7 @@ sessions and strategy flows must remain compatible.
 | Trailing stops / break-even | Price, percent and ATR trailing; configurable break-even activation; prospective updates for long/short positions | Engine and ticket implemented; desktop/iPhone replay and reload tests pass; broader integration pending |
 | Multiple take profits | Up to three price/percentage allocations; remaining position stays protected; conservative ambiguous-bar execution | Engine and ticket implemented; desktop/iPhone reload journey passes; broader saved/Live coverage pending |
 | Bookmarks / checkpoints | Name, save, restore and retry replay with exact account state; dataset identity and saved-session handling | Implemented; desktop/iPhone browser and server retry/reload journeys pass |
-| Alerts | Price crossings, indicator crossings, strategy conditions; notifications and optional replay pause; no future data | Pending |
+| Alerts | Price crossings, indicator crossings, strategy conditions; notifications and optional replay pause; no future data | Implemented; six desktop/iPhone journeys pass; Live engine tests pass; background coverage pending |
 | Portfolio trading | Trade base and comparisons using shared cash, buying power, positions and portfolio P&L | Pending |
 | Strategy validation | Rolling train/test windows, parameter heatmaps, reproducible Monte Carlo distributions | Pending |
 | Execution realism | Configurable spread, volume participation/partial fills, short borrowing costs, optional lower-timeframe execution | Pending |
@@ -34,3 +34,5 @@ Initial multiple-target implementation: 356 unit tests passed; production build 
 Protection implementation uses completed-close trailing updates and a 14-period simple mean of true range (15 observed candles), with no ATR stop until warm-up. Break-even is entry price before costs. Remaining work includes saved-server/Live coverage, strategy builder exposure, stricter imported-state validation, and full regression verification.
 
 Latest checks: 359 unit tests pass; build and E2E TypeScript checks pass. Both added browser journeys pass on desktop and iPhone (four cases total). These checks do not establish completion of the full eleven-feature scope.
+
+Alerts evidence: six desktop/iPhone journeys pass for local/server pause and history persistence, rearm, indicator rules and template loading. Shared rule evaluator, causal seek stopping and completed-bar Live evaluation have unit coverage. Checkpoints now include alert definitions/history.

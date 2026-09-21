@@ -164,7 +164,7 @@ def order(id:str,body:dict=Body(...)):
         session.setdefault('commands',{})
         if key not in session['commands']:
             if len(session['pending'])>=100: raise HTTPException(422,'Pending order limit reached')
-            if body['command'].get('type')=='cancel':
+            if body['command'].get('type') in ('cancel','alert'):
                 session['session']=validated;session['revision']+=1
             else:
                 session['pending'].append({'key':key,'submittedAt':time.time(),'command':body['command']})

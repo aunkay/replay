@@ -1,3 +1,4 @@
+import { evaluateAlerts } from './alerts';
 import {
   advanceBar,
   cancelOrder,
@@ -47,8 +48,11 @@ export function applyLiveTick(
     bars = market.bars.filter((b) => b.complete === true);
   let account = session.account,
     pending = [...queued];
+  let alertSession = session;
+  const observed = [...session.market.bars];
   const rejected: { key: string; reason: string }[] = [];
   for (const bar of bars.filter((b) => b.time > oldTime)) {
+    observed.push(bar);
     if ((bar.endTime ?? bar.time) <= resumeAfter) {
       account = withEquity(account, bar);
       continue;
@@ -71,13 +75,14 @@ export function applyLiveTick(
         rejected.push({ key: request.key, reason: (error as Error).message });
       }
     }
+    alertSession = evaluateAlerts(alertSession, observed);
   }
   const merged = new Map(session.market.bars.map((b) => [b.time, b]));
   for (const bar of bars) if (bar.time > oldTime) merged.set(bar.time, bar);
   const finalBars = [...merged.values()].sort((a, b) => a.time - b.time);
   return {
     session: {
-      ...session,
+      ...alertSession,
       mode: 'live' as const,
       market: { ...market, bars: finalBars },
       cursor: finalBars.length - 1,

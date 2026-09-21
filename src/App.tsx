@@ -1,3 +1,5 @@
+import { advanceReplay, alertCommand, type AlertCommand } from './lib/alerts';
+import Alerts from './components/Alerts';
 import { applyCheckpoint, type CheckpointCommand } from './lib/checkpoints';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -549,16 +551,21 @@ export default function App() {
     }
 
     setSession((previous) => {
-      const next = previous.cursor + 1;
-      if (next >= previous.market.bars.length) return previous;
-      return {
-        ...previous,
-        cursor: next,
-        account: advanceBar(previous.account, previous.market.bars[next]),
-      };
+      return advanceReplay(previous, previous.cursor + 1);
     });
     setHoverBar(null);
   }, [live.active, session.blind, session.cursor, library.record]);
+
+  const lastAlert = useRef(session.alertEvents?.at(-1)?.id);
+  useEffect(() => {
+    const event = session.alertEvents?.at(-1);
+    if (event && event.id !== lastAlert.current) {
+      if (session.alertEvents?.some((e) => e.time === event.time && e.pause))
+        setPlaying(false);
+      setNotice({ text: `Alert: ${event.name} · ${event.price.toFixed(2)}` });
+    }
+    lastAlert.current = event?.id;
+  }, [session.alertEvents]);
 
   useEffect(() => {
     if (playing) window.dispatchEvent(new Event('replay:follow'));
@@ -803,10 +810,7 @@ export default function App() {
       return;
     }
     setSession((previous) => {
-      let nextAccount = previous.account;
-      for (let i = previous.cursor + 1; i <= target; i++)
-        nextAccount = advanceBar(nextAccount, previous.market.bars[i]);
-      return { ...previous, cursor: target, account: nextAccount };
+      return advanceReplay(previous, target);
     });
   }
 
@@ -1060,6 +1064,16 @@ export default function App() {
           </div>
 
           <div className="workspace-tools">
+            {!blind && (
+              <Alerts
+                session={session}
+                onCommand={async (command: AlertCommand) => {
+                  if (live.active) await live.command(command);
+                  else if (library.record) await library.command(command);
+                  else setSession(alertCommand(session, command));
+                }}
+              />
+            )}
             {!blind && !live.active && (
               <WorkspaceHub
                 session={session}

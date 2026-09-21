@@ -1,4 +1,5 @@
-import {applyCheckpoint} from '../src/lib/checkpoints';
+import { advanceReplay, alertCommand } from '../src/lib/alerts';
+import { applyCheckpoint } from '../src/lib/checkpoints';
 import { initializeLive, applyLiveTick } from '../src/lib/liveEngine';
 import { createServer } from 'node:http';
 import {
@@ -8,7 +9,6 @@ import {
   workerData,
 } from 'node:worker_threads';
 import {
-  advanceBar,
   submitOrder,
   cancelOrder,
   closePosition,
@@ -145,8 +145,12 @@ if (!isMainThread) {
         const bar = session.market.bars[session.cursor];
         if (!bar || !session.account) throw new Error('Invalid session');
         let next = { ...session };
-        if (command.type === 'checkpoint') {
-          if (command.action === 'restore') throw new Error('Restore checkpoints into a new session to preserve the original journal.');
+        if (command.type === 'alert') next = alertCommand(session, command);
+        else if (command.type === 'checkpoint') {
+          if (command.action === 'restore')
+            throw new Error(
+              'Restore checkpoints into a new session to preserve the original journal.',
+            );
           next = applyCheckpoint(session, command);
         } else if (command.type === 'order')
           next.account = submitOrder(session.account, command.order, bar);
@@ -162,18 +166,7 @@ if (!isMainThread) {
             bar,
           );
         else if (command.type === 'advance') {
-          const target = Math.min(
-            command.target ?? session.cursor + 1,
-            session.market.bars.length - 1,
-            session.blind && !session.blind.finished
-              ? session.blind.end
-              : Infinity,
-          );
-          if (!Number.isInteger(target) || target < session.cursor)
-            throw new Error('Forward advancement only');
-          for (let i = session.cursor + 1; i <= target; i++)
-            next.account = advanceBar(next.account, session.market.bars[i]);
-          next.cursor = target;
+          next = advanceReplay(session, command.target ?? session.cursor + 1);
         } else throw new Error('Unknown command');
         return send(200, next);
       }
@@ -202,5 +195,8 @@ if (!isMainThread) {
     } catch (error) {
       send(400, { detail: (error as Error).message });
     }
-  }).listen(Number(process.env.ENGINE_PORT ?? 8003), process.env.ENGINE_HOST??'127.0.0.1');
+  }).listen(
+    Number(process.env.ENGINE_PORT ?? 8003),
+    process.env.ENGINE_HOST ?? '127.0.0.1',
+  );
 }

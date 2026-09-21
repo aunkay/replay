@@ -38,6 +38,8 @@ export function applyCheckpoint(
           cursor: session.cursor,
           startCursor: session.startCursor,
           account: structuredClone(session.account),
+          alerts: structuredClone(session.alerts),
+          alertEvents: structuredClone(session.alertEvents),
         },
       ],
     };
@@ -56,6 +58,8 @@ export function applyCheckpoint(
     cursor: checkpoint.cursor,
     startCursor: checkpoint.startCursor,
     account: structuredClone(checkpoint.account),
+    alerts: structuredClone(checkpoint.alerts),
+    alertEvents: structuredClone(checkpoint.alertEvents),
   };
   if (!isValidSession(restored))
     throw new Error('This checkpoint does not match the session dataset.');

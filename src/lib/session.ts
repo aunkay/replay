@@ -1,3 +1,4 @@
+import { validateAlert, type MarketAlert, type AlertEvent } from './alerts';
 import { isValidMarketData, type MarketData } from './data';
 import type { TradingState } from './engine';
 
@@ -8,12 +9,16 @@ export type StoredSession = {
   cursor: number;
   startCursor: number;
   account: TradingState;
+  alerts?: MarketAlert[];
+  alertEvents?: AlertEvent[];
   checkpoints?: {
     id: string;
     name: string;
     cursor: number;
     startCursor: number;
     account: TradingState;
+    alerts?: MarketAlert[];
+    alertEvents?: AlertEvent[];
   }[];
 };
 
@@ -72,6 +77,36 @@ export function isValidSession(value: unknown): value is StoredSession {
   )
     return false;
 
+  try {
+    if (value.alerts !== undefined) {
+      if (!Array.isArray(value.alerts) || value.alerts.length > 30)
+        return false;
+      const ids = new Set<string>();
+      for (const a of value.alerts) {
+        validateAlert(a);
+        if (ids.has(a.id)) return false;
+        ids.add(a.id);
+      }
+    }
+    if (
+      value.alertEvents !== undefined &&
+      (!Array.isArray(value.alertEvents) ||
+        value.alertEvents.length > 200 ||
+        value.alertEvents.some(
+          (e) =>
+            !record(e) ||
+            !nonemptyText(e.id) ||
+            !nonemptyText(e.alertId) ||
+            !nonemptyText(e.name) ||
+            !timestamp(e.time) ||
+            !positive(e.price) ||
+            typeof e.pause !== 'boolean',
+        ))
+    )
+      return false;
+  } catch {
+    return false;
+  }
   if (value.checkpoints !== undefined) {
     if (!Array.isArray(value.checkpoints) || value.checkpoints.length > 20)
       return false;
@@ -93,6 +128,8 @@ export function isValidSession(value: unknown): value is StoredSession {
           cursor: c.cursor,
           startCursor: c.startCursor,
           account: c.account,
+          alerts: c.alerts,
+          alertEvents: c.alertEvents,
         })
       )
         return false;

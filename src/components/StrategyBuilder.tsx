@@ -133,7 +133,7 @@ function OperandEditor({
     </div>
   );
 }
-function RuleEditor({
+export function RuleEditor({
   name,
   value,
   onChange,
