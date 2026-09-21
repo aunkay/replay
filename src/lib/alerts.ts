@@ -1,3 +1,4 @@
+import { advanceExecution } from './finerExecution';
 import { aggregateTimeframe } from './timeframes';
 import {
   createRuleEvaluator,
@@ -5,7 +6,7 @@ import {
   validateStrategy,
   type Rule,
 } from './strategy';
-import { advanceBar, type Candle } from './engine';
+import { type Candle } from './engine';
 import type { StoredSession } from './session';
 export type MarketAlert = {
   id: string;
@@ -146,7 +147,12 @@ export function advanceReplay(
     next = evaluateAlerts({
       ...next,
       cursor: i,
-      account: advanceBar(next.account, session.market.bars[i]),
+      account: advanceExecution(
+        next.account,
+        session.market.bars[i],
+        session.market.bars[i + 1]?.time,
+        session.finerMarket,
+      ),
     });
     if (
       next.alertEvents?.at(-1)?.id !== last &&

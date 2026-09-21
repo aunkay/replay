@@ -1,3 +1,4 @@
+import { validateFiner } from '../src/lib/finerExecution';
 import { runResearch } from '../src/lib/research';
 import { isValidMarketData } from '../src/lib/data';
 import { advanceReplay, alertCommand } from '../src/lib/alerts';
@@ -159,7 +160,11 @@ if (!isMainThread) {
         const bar = session.market.bars[session.cursor];
         if (!bar || !session.account) throw new Error('Invalid session');
         let next = { ...session };
-        if (command.type === 'alert') next = alertCommand(session, command);
+        if (command.type === 'finer-data') {
+          if (command.market) validateFiner(session.market, command.market);
+          next = { ...session, finerMarket: command.market ?? undefined };
+        } else if (command.type === 'alert')
+          next = alertCommand(session, command);
         else if (command.type === 'checkpoint') {
           if (command.action === 'restore')
             throw new Error(

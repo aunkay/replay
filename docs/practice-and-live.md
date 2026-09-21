@@ -14,6 +14,12 @@ A positive volume participation setting caps the combined quantity filled by all
 
 Short borrowing accrues over elapsed calendar time using the prior observed price and a 365-day year. It reduces cash and account P&L and appears separately from commissions in account totals and session exports. Borrow availability is not modeled. Trade-episode financing attribution and finer-candle execution are still being integrated in this expansion.
 
+## Finer-candle replay execution
+
+Expand **Finer-candle execution** above the replay workspace. Fetch a smaller interval from Yahoo, or select a saved dataset for the same ticker, currency and adjustment convention. The setting is retained with the session and checkpoints.
+
+Each parent candle uses the finer sequence only when its opening price, high, low, closing price and total volume reconcile. Missing or incompatible windows retain conservative parent-candle execution; the panel reports both reconciled candles and fallbacks. The finer sequence can resolve a target occurring before a later stop, while ambiguous finer candles still use stop-first handling. Ledger/chart timestamps remain aligned with the parent candle; actual intrabar execution timestamps are retained separately. Trailing rules update at the parent close.
+
 ## Protected orders and position sizing
 
 Expand **Protection & risk sizing** in the order ticket. Choose a stop-loss and/or take-profit, expressed as price or a percentage; targets can also use a risk multiple. Manual quantity remains available. Cash-risk and percentage-equity modes calculate quantity from entry-to-stop distance, estimated fees and slippage, round down to the selected quantity step and cap exposure at 1× equity. Percentage risk defaults to 1%.

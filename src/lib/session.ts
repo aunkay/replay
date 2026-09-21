@@ -9,6 +9,7 @@ export type StoredSession = {
   cursor: number;
   startCursor: number;
   account: TradingState;
+  finerMarket?: MarketData;
   alerts?: MarketAlert[];
   alertEvents?: AlertEvent[];
   checkpoints?: {
@@ -17,6 +18,7 @@ export type StoredSession = {
     cursor: number;
     startCursor: number;
     account: TradingState;
+    finerMarket?: MarketData;
     alerts?: MarketAlert[];
     alertEvents?: AlertEvent[];
   }[];
@@ -77,6 +79,14 @@ export function isValidSession(value: unknown): value is StoredSession {
   )
     return false;
 
+  if (
+    value.finerMarket !== undefined &&
+    (!isValidMarketData(value.finerMarket) ||
+      value.finerMarket.ticker !== value.market.ticker ||
+      value.finerMarket.currency !== value.market.currency ||
+      value.finerMarket.adjusted !== value.market.adjusted)
+  )
+    return false;
   try {
     if (value.alerts !== undefined) {
       if (!Array.isArray(value.alerts) || value.alerts.length > 30)
@@ -128,6 +138,7 @@ export function isValidSession(value: unknown): value is StoredSession {
           cursor: c.cursor,
           startCursor: c.startCursor,
           account: c.account,
+          finerMarket: c.finerMarket,
           alerts: c.alerts,
           alertEvents: c.alertEvents,
         })
@@ -226,6 +237,17 @@ export function isValidSession(value: unknown): value is StoredSession {
       (order.realizedPnl !== undefined && !finite(order.realizedPnl))
     )
       return false;
+    if (
+      order.executionTime !== undefined &&
+      (!timestamp(order.executionTime) ||
+        !finite(order.filledAt) ||
+        order.executionTime < order.filledAt ||
+        order.executionTime >
+          (currentBar.endTime ??
+            value.market.bars[value.cursor + 1]?.time ??
+            currentBar.time))
+    )
+      return false;
     if (!validDynamic(order.dynamicProtection)) return false;
     if (order.takeProfits !== undefined) {
       if (
@@ -263,7 +285,8 @@ export function isValidSession(value: unknown): value is StoredSession {
         order.filledAt < order.createdAt ||
         (order.type !== 'market' &&
           !order.reduceOnly &&
-          order.filledAt <= order.createdAt) ||
+          order.filledAt <= order.createdAt &&
+          order.executionTime === undefined) ||
         !positive(order.fillPrice) ||
         !nonnegative(order.fee)
       )

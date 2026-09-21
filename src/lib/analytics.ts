@@ -29,7 +29,10 @@ export function closedTrades(
   const result: ClosedTrade[] = [];
   for (const o of orders
     .filter((o) => o.status === 'filled')
-    .sort((a, b) => a.filledAt! - b.filledAt!)) {
+    .sort(
+      (a, b) =>
+        (a.executionTime ?? a.filledAt!) - (b.executionTime ?? b.filledAt!),
+    )) {
     if (o.status !== 'filled') continue;
     const signed = o.side === 'buy' ? o.quantity : -o.quantity;
     const opposite = quantity && Math.sign(quantity) !== Math.sign(signed);

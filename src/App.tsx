@@ -1,3 +1,5 @@
+import FinerExecution from './components/FinerExecution';
+import { validateFiner } from './lib/finerExecution';
 import DataLibrary from './components/DataLibrary';
 import BackgroundMonitors from './components/BackgroundMonitors';
 import { advanceReplay, alertCommand, type AlertCommand } from './lib/alerts';
@@ -1101,6 +1103,21 @@ export default function App() {
                 setOrderPrice('');
                 setDrawingTool('cursor');
                 setSelectedDrawingId(null);
+              }}
+            />
+          )}
+          {!blind && !live.active && (
+            <FinerExecution
+              session={session}
+              onChange={async (finer) => {
+                setPlaying(false);
+                if (finer) validateFiner(session.market, finer);
+                if (library.record)
+                  await library.command({
+                    type: 'finer-data',
+                    market: finer ?? null,
+                  });
+                else setSession({ ...session, finerMarket: finer });
               }}
             />
           )}

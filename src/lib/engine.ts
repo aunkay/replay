@@ -44,6 +44,7 @@ export type Order = {
   status: 'pending' | 'filled' | 'cancelled' | 'rejected';
   createdAt: number;
   filledAt?: number;
+  executionTime?: number;
   fillPrice?: number;
   fee?: number;
   /** Set only for fills that close shares; net of this fill's commission. */
@@ -74,6 +75,9 @@ export type TradingState = {
   recentBars?: Candle[];
   liquidity?: { time: number; remaining: number };
   borrowingPaid?: number;
+  lastBorrowTime?: number;
+  executionClock?: { base: number; end: number };
+  executionCoverage?: { fine: number; fallback: number };
   dynamicProtection?: DynamicProtection;
 };
 export type OrderRequest = Pick<
@@ -721,8 +725,19 @@ export function submitOrder(
   if (!reason && request.type === 'market')
     next = executeOrder(next, order, bar.close, bar.time);
   if (barIsValid && (previousTime === undefined || bar.time >= previousTime)) {
-    if (!reason && request.type === 'market')
+    if (!reason && request.type === 'market') {
       next = updateDynamicProtection(next, bar);
+      if (state.executionClock?.base === bar.time)
+        next = {
+          ...next,
+          orders: next.orders.map((o) =>
+            o.status === 'filled' &&
+            !state.orders.some((old) => old.id === o.id)
+              ? { ...o, executionTime: state.executionClock!.end }
+              : o,
+          ),
+        };
+    }
     next = withEquity(next, bar);
   }
   return next;
@@ -736,6 +751,7 @@ export function advanceBar(
   state: TradingState,
   bar: Candle,
   protectionAtOpen = false,
+  deferDynamic = false,
 ): TradingState {
   const previousTime = latestTime(state);
   if (!validBar(bar) || (previousTime !== undefined && bar.time < previousTime))
@@ -744,14 +760,14 @@ export function advanceBar(
   if (
     state.position.quantity < 0 &&
     previousTime !== undefined &&
-    bar.time > previousTime &&
+    bar.time > (state.lastBorrowTime ?? previousTime) &&
     state.config.borrowAprPct
   ) {
     const mark = state.recentBars?.at(-1)?.close ?? state.position.averagePrice;
     const cost =
       (((Math.abs(state.position.quantity) * mark * state.config.borrowAprPct) /
         100) *
-        (bar.time - previousTime)) /
+        (bar.time - (state.lastBorrowTime ?? previousTime))) /
       (365 * 86400);
     prepared = {
       ...prepared,
@@ -803,6 +819,40 @@ export function advanceBar(
   }
   // Update stops only after executing this candle: new levels cannot act on
   // a high/low that occurred before the completed-candle observation.
+  if (!deferDynamic) next = updateDynamicProtection(next, bar);
+  if (state.config.borrowAprPct) next = { ...next, lastBorrowTime: bar.time };
+  return withEquity(next, bar);
+}
+
+/** Execute a reconciled finer path, retaining base-candle ledger timestamps. */
+export function advanceWithSubBars(
+  state: TradingState,
+  bar: Candle,
+  bars: Candle[],
+): TradingState {
+  let next = state;
+  for (const child of bars) next = advanceBar(next, child, false, true);
+  const remainingLiquidity = next.liquidity?.remaining ?? 0;
+  next = {
+    ...next,
+    orders: next.orders.map((o) => ({
+      ...o,
+      createdAt: o.createdAt >= bar.time ? bar.time : o.createdAt,
+      ...(o.filledAt !== undefined && o.filledAt >= bar.time
+        ? { executionTime: o.filledAt, filledAt: bar.time }
+        : {}),
+    })),
+    equityHistory: state.equityHistory,
+    recentBars: state.recentBars,
+    liquidity: undefined,
+    executionClock: {
+      base: bar.time,
+      end: bar.endTime ?? bars.at(-1)!.endTime ?? bars.at(-1)!.time,
+    },
+  };
+  // Manual orders at the revealed parent close share the last subcandle's budget.
+  if (next.config.volumeParticipationPct)
+    next.liquidity = { time: bar.time, remaining: remainingLiquidity };
   next = updateDynamicProtection(next, bar);
   return withEquity(next, bar);
 }

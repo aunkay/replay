@@ -38,6 +38,7 @@ export function applyCheckpoint(
           cursor: session.cursor,
           startCursor: session.startCursor,
           account: structuredClone(session.account),
+          finerMarket: structuredClone(session.finerMarket),
           alerts: structuredClone(session.alerts),
           alertEvents: structuredClone(session.alertEvents),
         },
@@ -58,6 +59,7 @@ export function applyCheckpoint(
     cursor: checkpoint.cursor,
     startCursor: checkpoint.startCursor,
     account: structuredClone(checkpoint.account),
+    finerMarket: structuredClone(checkpoint.finerMarket),
     alerts: structuredClone(checkpoint.alerts),
     alertEvents: structuredClone(checkpoint.alertEvents),
   };

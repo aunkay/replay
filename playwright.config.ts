@@ -41,6 +41,7 @@ export default defineConfig({
         '**/timeframe-rules.spec.ts',
         '**/research-validation.spec.ts',
         '**/execution.spec.ts',
+        '**/finer-execution.spec.ts',
         '**/insecure-origin.spec.ts',
         '**/replay-follow.spec.ts',
         '**/comparison-price.spec.ts',
