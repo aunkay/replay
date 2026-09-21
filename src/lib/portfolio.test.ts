@@ -219,3 +219,24 @@ it('does not execute manual orders using a stale comparison candle', () => {
     }).assets[1].account.position.quantity,
   ).toBe(1);
 });
+
+it('supports six instruments with one capital limit and rejects a seventh', () => {
+  let p = portfolio();
+  for (const ticker of ['CCC', 'DDD', 'EEE', 'FFF'])
+    p = addPortfolioAsset(p, ticker, 'USD', bar());
+  for (const asset of p.assets)
+    p = submitPortfolioOrder(p, asset.ticker, {
+      side: 'buy',
+      type: 'market',
+      quantity: 1,
+    });
+  expect(portfolioMetrics(p)).toMatchObject({
+    cash: 400,
+    equity: 1000,
+    exposure: 600,
+    buyingPower: 400,
+  });
+  expect(() => addPortfolioAsset(p, 'GGG', 'USD', bar())).toThrow(
+    'six tickers',
+  );
+});

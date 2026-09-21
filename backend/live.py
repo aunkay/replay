@@ -70,11 +70,17 @@ def _loop():
                             session.update(active=False,gap=True,error='The missing history exceeds the provider window. Acknowledge the monitoring gap before resuming.');persist(session)
                 stream.update(market=market,status='current',lastSuccess=time.time(),error=None,failures=0)
                 for session in _sessions.values():
-                    if not session['active'] or tuple(session['keys'][0])!=key: continue
+                    if not session['active']: continue
+                    portfolio=session.get('session',{}).get('portfolio') if session.get('session') else None
+                    portfolio_keys={stream_key(m['ticker'],m['interval'],m.get('extendedHours',False)) for m in portfolio['markets']} if portfolio else set()
+                    if tuple(session['keys'][0])!=key and key not in portfolio_keys: continue
                     if session.get('session') is None:
                         session['session']=engine('/initialize',{'market':market,'config':session['config']});session['pending']=[]
                     else:
-                        result=engine('/live-tick',{'session':session['session'],'market':market,'pending':session['pending'],'resumeAfter':session.get('resumeAfter',0)})
+                        base_market=_streams[session['keys'][0]].get('market')
+                        if not base_market: continue
+                        comparison_markets=[_streams[k]['market'] for k in portfolio_keys if _streams.get(k,{}).get('market')]
+                        result=engine('/live-tick',{'session':session['session'],'market':base_market,'comparisonMarkets':comparison_markets,'pending':session['pending'],'resumeAfter':session.get('resumeAfter',0)})
                         session['session']=result['session'];session['pending']=result['pending'];session['rejected']=result.get('rejected',[])
                     session['revision']+=1
                     persist(session)
@@ -208,13 +214,24 @@ def order(id:str,body:dict=Body(...)):
         session=lookup(id)
         if not session['active'] or not session['session']: raise HTTPException(409,'Wait for a current active live workspace')
         if body.get('client')!=session['controller']: raise HTTPException(409,'Only the controlling client can trade')
-        validated=engine('/command',{'session':session['session'],'command':body.get('command')})
+        command=body.get('command') or {}
+        if command.get('type')=='portfolio-add':
+            requested=command.get('market') or {}
+            key=stream_key(requested.get('ticker',''),session['session']['market']['interval'],session['session']['market'].get('extendedHours',False))
+            provider_market=_streams.get(key,{}).get('market') if key in session['keys'] else None
+            if not provider_market: raise HTTPException(409,'Add this ticker as a chart comparison and wait for its Live data before trading it.')
+            provider_market=copy.deepcopy(provider_market)
+            provider_market['bars']=[b for b in provider_market['bars'] if b.get('complete') is True]
+            command={**command,'market':provider_market}
+            body={**body,'command':command}
+        immediate=command.get('type') in ('cancel','alert','portfolio-add')
+        validated=engine('/command' if immediate else '/validate-live-command',{'session':session['session'],'command':command})
         key=str(body.get('key',''))
         if not key: raise HTTPException(422,'Idempotency key required')
         session.setdefault('commands',{})
         if key not in session['commands']:
             if len(session['pending'])>=100: raise HTTPException(422,'Pending order limit reached')
-            if body['command'].get('type') in ('cancel','alert'):
+            if body['command'].get('type') in ('cancel','alert','portfolio-add'):
                 session['session']=validated;session['revision']+=1
             else:
                 session['pending'].append({'key':key,'submittedAt':time.time(),'command':body['command']})
@@ -233,6 +250,10 @@ def update_streams(id:str,body:dict=Body(...)):
         session=lookup(id)
         if body.get('client')!=session['controller']: raise HTTPException(409,'Only the controller can change streams')
         if keys[0]!=session['keys'][0]: raise HTTPException(422,'Start a new live workspace to change the trading instrument')
+        portfolio=(session.get('session') or {}).get('portfolio')
+        if portfolio:
+            keys=list(dict.fromkeys(keys+[stream_key(m['ticker'],m['interval'],m.get('extendedHours',False)) for m in portfolio['markets']]))
+            if len(keys)>24 or len({k[0] for k in keys})>6: raise HTTPException(422,'Portfolio holdings count toward the six-symbol limit')
         for key in keys: _streams.setdefault(key,{'ticker':key[0],'interval':key[1],'extendedHours':key[2],'nextAttempt':time.time(),'status':'queued'})
         session['keys']=keys
         return snapshot(session)

@@ -1,3 +1,11 @@
+import PortfolioPanel from './components/PortfolioPanel';
+import { portfolioMetrics } from './lib/portfolio';
+import {
+  applyTradingCommand,
+  sessionInstruments,
+  attachPortfolioMarket,
+  type TradingCommand,
+} from './lib/sessionPortfolio';
 import FinerExecution from './components/FinerExecution';
 import { validateFiner } from './lib/finerExecution';
 import DataLibrary from './components/DataLibrary';
@@ -62,13 +70,10 @@ import { INDICATORS } from './lib/indicators';
 import { type DrawingTool, type Drawing } from './lib/drawings';
 import { useChartWorkspace } from './lib/chartWorkspace';
 import {
-  editBracket,
   advanceBar,
-  cancelOrder,
-  closePosition,
   createAccount,
+  closePosition,
   getMetrics,
-  submitOrder,
   type Candle,
   type EngineConfig,
   type OrderType,
@@ -235,12 +240,17 @@ export default function App() {
   const symbols = Array.from(
     new Set([
       market.ticker,
+      ...(session.portfolio?.markets.map((m) => m.ticker) ?? []),
       ...comparisons.flatMap((c) => (c.ticker ? [c.ticker] : [])),
       ...panels.flatMap((p) => [p.ticker, ...p.comparisons]),
     ]),
   );
   const liveStreams = [
     { ticker: market.ticker, interval: market.interval },
+    ...(session.portfolio?.markets.map((m) => ({
+      ticker: m.ticker,
+      interval: m.interval,
+    })) ?? []),
     ...comparisons.flatMap((c) =>
       c.ticker ? [{ ticker: c.ticker, interval: market.interval }] : [],
     ),
@@ -369,7 +379,10 @@ export default function App() {
     : undefined;
   const liveQuote = liveMarket?.bars.at(-1);
   const currentPrice = liveQuote?.close ?? bar.close;
-  const metrics = getMetrics(account, currentPrice);
+  const baseMetrics = getMetrics(account, currentPrice);
+  const metrics = session.portfolio
+    ? { ...baseMetrics, ...portfolioMetrics(session.portfolio.book) }
+    : baseMetrics;
   const visibleBars = useMemo(
     () => liveMarket?.bars ?? market.bars.slice(0, cursor + 1),
     [market.bars, cursor, liveMarket],
@@ -755,23 +768,11 @@ export default function App() {
       ).catch((error) => setNotice({ text: error.message, error: true }));
       return;
     }
-    setSession((previous) => ({
-      ...previous,
-      account:
-        command.type === 'close'
-          ? closePosition(
-              previous.account,
-              previous.market.bars[previous.cursor],
-            )
-          : command.type === 'bracket'
-            ? editBracket(
-                previous.account,
-                command.stopLoss,
-                command.takeProfit,
-                previous.market.bars[previous.cursor],
-              )
-            : cancelOrder(previous.account, command.id!),
-    }));
+    try {
+      setSession(applyTradingCommand(session, command));
+    } catch (error) {
+      setNotice({ text: (error as Error).message, error: true });
+    }
   }
   function placeOrder(event: React.FormEvent) {
     event.preventDefault();
@@ -801,14 +802,13 @@ export default function App() {
       ).catch((error) => setNotice({ text: error.message, error: true }));
       return;
     }
-    setSession((previous) => ({
-      ...previous,
-      account: submitOrder(
-        previous.account,
-        request,
-        previous.market.bars[previous.cursor],
-      ),
-    }));
+    try {
+      setSession(
+        applyTradingCommand(session, { type: 'order', order: request }),
+      );
+    } catch (error) {
+      setNotice({ text: (error as Error).message, error: true });
+    }
   }
 
   function seek(target: number) {
@@ -930,7 +930,12 @@ export default function App() {
         ['Unrealized P&L', metrics.unrealizedPnl],
         ['Total P&L', metrics.totalPnl],
         ['Fees paid', metrics.feesPaid],
-        ['Short borrowing paid', account.borrowingPaid ?? 0],
+        [
+          'Short borrowing paid',
+          session.portfolio
+            ? portfolioMetrics(session.portfolio.book).borrowingPaid
+            : (account.borrowingPaid ?? 0),
+        ],
         ['Max drawdown (%)', metrics.maxDrawdown],
         [],
         [
@@ -946,29 +951,32 @@ export default function App() {
           'Fee',
           'Realized P&L',
           'Reason',
+          'Ticker',
         ],
-        ...account.orders.map((order) => [
-          order.id,
-          order.side,
-          order.type,
-          order.quantity,
-          order.price,
-          order.status,
-          new Date(order.createdAt * 1000).toISOString(),
-          order.filledAt ? new Date(order.filledAt * 1000).toISOString() : '',
-          order.fillPrice,
-          order.fee,
-          order.status === 'filled'
-            ? (order.realizedPnl ?? -(order.fee ?? 0))
-            : undefined,
-          order.reason,
-        ]),
+        ...sessionInstruments(session).flatMap((instrument) =>
+          instrument.account.orders.map((order) => [
+            order.id,
+            order.side,
+            order.type,
+            order.quantity,
+            order.price,
+            order.status,
+            new Date(order.createdAt * 1000).toISOString(),
+            order.filledAt ? new Date(order.filledAt * 1000).toISOString() : '',
+            order.fillPrice,
+            order.fee,
+            order.status === 'filled'
+              ? (order.realizedPnl ?? -(order.fee ?? 0))
+              : undefined,
+            order.reason,
+            instrument.ticker,
+          ]),
+        ),
         [],
         ['Equity date (UTC)', 'Equity'],
-        ...account.equityHistory.map((point) => [
-          new Date(point.time * 1000).toISOString(),
-          point.equity,
-        ]),
+        ...(session.portfolio?.book.equityHistory ?? account.equityHistory).map(
+          (point) => [new Date(point.time * 1000).toISOString(), point.equity],
+        ),
       ],
       `replay-${market.ticker}-${new Date(bar.time * 1000).toISOString().slice(0, 10)}.csv`,
     );
@@ -1118,6 +1126,28 @@ export default function App() {
                     market: finer ?? null,
                   });
                 else setSession({ ...session, finerMarket: finer });
+              }}
+            />
+          )}
+          {!blind && (
+            <PortfolioPanel
+              session={session}
+              comparisons={comparisons.flatMap((c) => (c.data ? [c.data] : []))}
+              onAdd={async (data) => {
+                setPlaying(false);
+                if (live.active)
+                  await live.command({ type: 'portfolio-add', market: data });
+                else if (library.record)
+                  await library.command({
+                    type: 'portfolio-add',
+                    market: data,
+                  });
+                else setSession(attachPortfolioMarket(session, data));
+              }}
+              onCommand={async (command: TradingCommand) => {
+                if (live.active) await live.command(command);
+                else if (library.record) await library.command(command);
+                else setSession(applyTradingCommand(session, command));
               }}
             />
           )}
@@ -1281,6 +1311,7 @@ export default function App() {
                 <span key={p.key}>
                   Queued {p.command.order?.side ?? p.command.type}{' '}
                   {p.command.order?.quantity ?? ''}{' '}
+                  {p.command.ticker ?? market.ticker}{' '}
                   <button onClick={() => void live.cancelQueued(p.key)}>
                     Cancel queued order
                   </button>
@@ -2106,8 +2137,8 @@ export default function App() {
                     </div>
                     <div className="position-detail">
                       <span>Unrealized P&L</span>
-                      <strong className={tone(metrics.unrealizedPnl)}>
-                        {signed(metrics.unrealizedPnl)}
+                      <strong className={tone(baseMetrics.unrealizedPnl)}>
+                        {signed(baseMetrics.unrealizedPnl)}
                       </strong>
                     </div>
                     <button
@@ -2239,7 +2270,10 @@ export default function App() {
                   </div>
                   <div className="equity-chart-container">
                     <EquityChart
-                      points={account.equityHistory}
+                      points={
+                        session.portfolio?.book.equityHistory ??
+                        account.equityHistory
+                      }
                       initialCapital={account.config.initialCapital}
                     />
                   </div>
@@ -2625,7 +2659,8 @@ export default function App() {
                     <span>
                       All tickers share the chart display controls and matching
                       timestamps. Compare relative returns or normalize a window
-                      of shared candles. Orders stay on {market.ticker}.
+                      of shared candles. Use Portfolio trading to trade
+                      comparison tickers.
                     </span>
                   </div>
                   {(comparisonError || benchmark.error) && (

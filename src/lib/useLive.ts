@@ -16,6 +16,7 @@ export function useLive(
     restoring = useRef(restore);
   restoring.current = restore;
   const preserveConnectedStreams = useRef(false);
+  const pendingBackground = useRef<boolean | null>(null);
   const id = state?.id;
   const streamSignature = JSON.stringify(streams);
   useEffect(() => {
@@ -36,7 +37,11 @@ export function useLive(
       if (cancelled) return;
       try {
         const next = JSON.parse(event.data);
-        setState(next);
+        setState(
+          pendingBackground.current === null
+            ? next
+            : { ...next, background: pendingBackground.current },
+        );
         if (next.session) restoring.current(next.session);
         if (next.active) setError('');
         else
@@ -115,13 +120,18 @@ export function useLive(
     }
   }
   async function background(enabled: boolean) {
+    const previous = state?.background;
+    pendingBackground.current = enabled;
+    setState((old: any) => ({ ...old, background: enabled }));
     setBusy(true);
     try {
       setState(await api(`/live/${id}/background`, { client, enabled }, 'PUT'));
       setError('');
     } catch (e) {
+      setState((old: any) => ({ ...old, background: previous }));
       setError((e as Error).message);
     } finally {
+      pendingBackground.current = null;
       setBusy(false);
     }
   }

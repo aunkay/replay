@@ -1,3 +1,4 @@
+import { sessionInstruments } from '../lib/sessionPortfolio';
 import Checkpoints from './Checkpoints';
 import type { CheckpointCommand } from '../lib/checkpoints';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -149,20 +150,25 @@ export default function WorkspaceHub({
     session: null,
     orders: new Set(),
   });
+  const instruments = useMemo(() => sessionInstruments(session), [session]);
   const trades = useMemo(
     () =>
-      closedTrades(
-        session.account.orders,
-        session.market.bars.slice(0, session.cursor + 1),
-        session.account.financing,
-      ),
-    [session],
+      instruments
+        .flatMap((instrument) =>
+          closedTrades(
+            instrument.account.orders,
+            instrument.bars,
+            instrument.account.financing,
+          ).map((t) => ({ ...t, ticker: instrument.ticker })),
+        )
+        .sort((a, b) => a.openedAt - b.openedAt),
+    [instruments],
   );
   const filtered = trades.filter((t) => {
     const n = notes.find((n) => n.tradeId === t.id);
     return (
       !filter ||
-      `${t.direction} ${n?.setup ?? ''} ${n?.tags ?? ''}`
+      `${t.ticker} ${t.direction} ${n?.setup ?? ''} ${n?.tags ?? ''}`
         .toLowerCase()
         .includes(filter.toLowerCase())
     );
@@ -175,7 +181,7 @@ export default function WorkspaceHub({
         ? metrics.averageWin / metrics.averageLoss
         : null,
     ...equityAnalysis(
-      session.account.equityHistory,
+      session.portfolio?.book.equityHistory ?? session.account.equityHistory,
       session.account.config.initialCapital,
     ),
   };
@@ -295,7 +301,9 @@ export default function WorkspaceHub({
   }, [open]);
   useEffect(() => {
     const id = library.record?.id ?? null;
-    const fills = session.account.orders.filter((o) => o.status === 'filled');
+    const fills = instruments
+      .flatMap((a) => a.account.orders)
+      .filter((o) => o.status === 'filled');
     if (seen.current.session !== id) {
       seen.current = { session: id, orders: new Set(fills.map((o) => o.id)) };
       return;
@@ -307,7 +315,7 @@ export default function WorkspaceHub({
         const trade = trades.find((t) => t.orderIds.includes(fill.id));
         void capture(trade?.id ?? fill.id);
       }
-  }, [session.account.orders, library.record?.id, autoCapture]);
+  }, [instruments, library.record?.id, autoCapture]);
   async function capture(tradeId: string) {
     setSaving(true);
     setError('');
@@ -366,12 +374,16 @@ export default function WorkspaceHub({
     }
   }
   const journalTrades = [...trades];
-  if (session.account.position.quantity) {
+  for (const instrument of instruments) {
+    if (!instrument.account.position.quantity) continue;
     let position = 0;
-    let entry: (typeof session.account.orders)[number] | undefined;
-    for (const order of session.account.orders
+    let entry: (typeof instrument.account.orders)[number] | undefined;
+    for (const order of instrument.account.orders
       .filter((o) => o.status === 'filled')
-      .sort((a, b) => a.filledAt! - b.filledAt!)) {
+      .sort(
+        (a, b) =>
+          (a.executionTime ?? a.filledAt!) - (b.executionTime ?? b.filledAt!),
+      )) {
       const signed = order.quantity * (order.side === 'buy' ? 1 : -1);
       if (!position || position * (position + signed) < 0) entry = order;
       position += signed;
@@ -383,7 +395,8 @@ export default function WorkspaceHub({
     if (entry && !journalTrades.some((t) => t.id === entry.id))
       journalTrades.push({
         id: entry.id,
-        direction: session.account.position.quantity > 0 ? 'long' : 'short',
+        ticker: instrument.ticker,
+        direction: instrument.account.position.quantity > 0 ? 'long' : 'short',
         openedAt: entry.filledAt!,
         closedAt: 0,
         pnl: 0,
@@ -606,7 +619,7 @@ export default function WorkspaceHub({
                             <summary>
                               <span>
                                 <strong>
-                                  {session.market.ticker} ·{' '}
+                                  {t.ticker} ·{' '}
                                   {t.direction === 'long' ? 'Long' : 'Short'}
                                 </strong>
                                 <small>
@@ -780,6 +793,7 @@ export default function WorkspaceHub({
                           [
                             [
                               'Trade',
+                              'Ticker',
                               'Direction',
                               'Entry',
                               'Exit',
@@ -792,6 +806,7 @@ export default function WorkspaceHub({
                             ],
                             ...filtered.map((t) => [
                               t.id,
+                              t.ticker,
                               t.direction,
                               t.openedAt,
                               t.closedAt,
@@ -828,6 +843,7 @@ export default function WorkspaceHub({
                           {filtered.map((t) => (
                             <tr key={t.id}>
                               <td>
+                                {t.ticker} ·{' '}
                                 {t.direction === 'long' ? 'Long' : 'Short'}
                                 <small>
                                   {new Date(

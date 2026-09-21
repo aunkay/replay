@@ -1,3 +1,4 @@
+import { advancePortfolioSession } from './sessionPortfolio';
 import { advanceExecution } from './finerExecution';
 import { aggregateTimeframe } from './timeframes';
 import {
@@ -144,16 +145,20 @@ export function advanceReplay(
   );
   for (let i = session.cursor + 1; i <= end; i++) {
     const last = next.alertEvents?.at(-1)?.id;
-    next = evaluateAlerts({
-      ...next,
-      cursor: i,
-      account: advanceExecution(
-        next.account,
-        session.market.bars[i],
-        session.market.bars[i + 1]?.time,
-        session.finerMarket,
-      ),
-    });
+    next = evaluateAlerts(
+      next.portfolio
+        ? advancePortfolioSession(next, i)
+        : {
+            ...next,
+            cursor: i,
+            account: advanceExecution(
+              next.account,
+              session.market.bars[i],
+              session.market.bars[i + 1]?.time,
+              session.finerMarket,
+            ),
+          },
+    );
     if (
       next.alertEvents?.at(-1)?.id !== last &&
       next.alertEvents?.some(

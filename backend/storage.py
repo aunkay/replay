@@ -135,15 +135,16 @@ def command(id:str,body:dict=Body(...)):
         payload=json.loads(row['payload'])
         payload['session']=engine('/command',dict(session=payload['session'],command=body.get('command')))
         # Materialize opening-trade journal rows without replacing user notes.
-        position=0.0
-        for order in sorted(payload['session']['account']['orders'],key=lambda o:o.get('filledAt') or 0):
-            if order.get('status')!='filled': continue
-            signed=order['quantity']*(1 if order['side']=='buy' else -1)
-            if position==0 or position*(position+signed)<0:
-                conn.execute('INSERT OR IGNORE INTO journals VALUES(?,?,?,?,?)',(str(uuid.uuid4()),id,order['id'],json.dumps({'setup':'','tags':'','entryRationale':'','exitRationale':'','notes':'','images':[]}),time.time()))
-            position+=signed
-            if abs(position)<1e-9: position=0
-
+        accounts=[a['account'] for a in payload['session']['portfolio']['book']['assets']] if payload['session'].get('portfolio') else [payload['session']['account']]
+        for account in accounts:
+            position=0.0
+            for order in sorted(account['orders'],key=lambda o:o.get('executionTime') or o.get('filledAt') or 0):
+                if order.get('status')!='filled': continue
+                signed=order['quantity']*(1 if order['side']=='buy' else -1)
+                if position==0 or position*(position+signed)<0:
+                    conn.execute('INSERT OR IGNORE INTO journals VALUES(?,?,?,?,?)',(str(uuid.uuid4()),id,order['id'],json.dumps({'setup':'','tags':'','entryRationale':'','exitRationale':'','notes':'','images':[]}),time.time()))
+                position+=signed
+                if abs(position)<1e-9: position=0
         conn.execute('UPDATE sessions SET payload=?,revision=revision+1,updated=? WHERE id=?',(json.dumps(payload),time.time(),id))
         result=public(get_record(conn,id))
         conn.execute('INSERT INTO commands VALUES(?,?,?)',(id,key,json.dumps(result)))

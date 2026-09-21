@@ -1,8 +1,10 @@
+import type { SessionPortfolio } from './sessionPortfolio';
 import { validateAlert, type MarketAlert, type AlertEvent } from './alerts';
 import { isValidMarketData, type MarketData } from './data';
 import { createAccount, type TradingState } from './engine';
 
 export type StoredSession = {
+  portfolio?: SessionPortfolio;
   mode?: 'replay' | 'blind' | 'live';
   blind?: { seed: number; end: number; finished: boolean };
   market: MarketData;
@@ -13,6 +15,7 @@ export type StoredSession = {
   alerts?: MarketAlert[];
   alertEvents?: AlertEvent[];
   checkpoints?: {
+    portfolio?: SessionPortfolio;
     id: string;
     name: string;
     cursor: number;
@@ -135,6 +138,7 @@ export function isValidSession(value: unknown): value is StoredSession {
       if (
         !isValidSession({
           market: value.market,
+          portfolio: c.portfolio,
           cursor: c.cursor,
           startCursor: c.startCursor,
           account: c.account,
@@ -146,6 +150,7 @@ export function isValidSession(value: unknown): value is StoredSession {
         return false;
     }
   }
+  if (value.portfolio !== undefined && !validPortfolio(value)) return false;
   const currentTime = value.market.bars[value.cursor].time;
   const account = value.account;
   // This context is computed by the portfolio engine, never trusted from storage.
@@ -345,5 +350,118 @@ export function isValidSession(value: unknown): value is StoredSession {
     lastEquity !== undefined &&
     Math.abs(lastEquity - equity) <= tolerance &&
     Math.abs(account.realizedPnl + unrealized - total) <= tolerance
+  );
+}
+
+function validPortfolio(session: RecordValue): boolean {
+  const p = session.portfolio;
+  if (
+    !record(p) ||
+    !record(p.book) ||
+    !Array.isArray(p.markets) ||
+    !Array.isArray(p.book.assets) ||
+    p.book.assets.length < 2 ||
+    p.book.assets.length > 6 ||
+    p.markets.length !== p.book.assets.length - 1
+  )
+    return false;
+  const market = session.market as MarketData;
+  const book = p.book;
+  if (
+    !finite(book.cash) ||
+    book.currency !== market.currency ||
+    !record(session.account) ||
+    JSON.stringify(book.config) !== JSON.stringify(session.account.config)
+  )
+    return false;
+  const assets = book.assets as unknown[];
+  const markets = [market, ...p.markets];
+  const tickers = new Set<string>();
+  for (const m of markets) {
+    if (
+      !isValidMarketData(m) ||
+      tickers.has(m.ticker) ||
+      m.currency !== market.currency ||
+      m.interval !== market.interval ||
+      m.adjusted !== market.adjusted
+    )
+      return false;
+    tickers.add(m.ticker);
+    const matches = assets.filter((a) => record(a) && a.ticker === m.ticker);
+    if (matches.length !== 1) return false;
+    const a = matches[0] as RecordValue;
+    if (
+      !record(a.bar) ||
+      !record(a.account) ||
+      a.currency !== m.currency ||
+      JSON.stringify(a.account.config) !== JSON.stringify(book.config)
+    )
+      return false;
+    const at = m.bars.findIndex((b) => b.time === (a.bar as RecordValue).time);
+    if (
+      at < 0 ||
+      JSON.stringify(m.bars[at]) !== JSON.stringify(a.bar) ||
+      m.bars[at].time > market.bars[session.cursor as number].time
+    )
+      return false;
+    const history = a.account.equityHistory;
+    if (!Array.isArray(history) || !record(history[0])) return false;
+    const start = m.bars.findIndex(
+      (b) => b.time === (history[0] as RecordValue).time,
+    );
+    if (
+      !isValidSession({
+        market: m,
+        account: a.account,
+        cursor: at,
+        startCursor: start,
+      })
+    )
+      return false;
+    if (
+      m.ticker === market.ticker &&
+      (at !== session.cursor ||
+        JSON.stringify(a.account) !== JSON.stringify(session.account))
+    )
+      return false;
+  }
+  const capital = (session.account.config as TradingState['config'])
+    .initialCapital;
+  const expectedCash =
+    capital +
+    assets.reduce<number>(
+      (sum, a) =>
+        sum + ((a as { account: TradingState }).account.cash - capital),
+      0,
+    );
+  const tolerance = Math.max(1, Math.abs(expectedCash), capital) * 1e-8;
+  if (
+    Math.abs(book.cash - expectedCash) > tolerance ||
+    !Array.isArray(book.equityHistory) ||
+    !book.equityHistory.length
+  )
+    return false;
+  let previous = -Infinity;
+  for (const point of book.equityHistory) {
+    if (
+      !record(point) ||
+      !timestamp(point.time) ||
+      point.time <= previous ||
+      point.time > market.bars[session.cursor as number].time ||
+      !finite(point.equity)
+    )
+      return false;
+    previous = point.time;
+  }
+  const equity =
+    book.cash +
+    assets.reduce<number>((sum, a) => {
+      const asset = a as { account: TradingState; bar: { close: number } };
+      return sum + asset.account.position.quantity * asset.bar.close;
+    }, 0);
+  const last = book.equityHistory.at(-1) as { time: number; equity: number };
+  return (
+    last.time === market.bars[session.cursor as number].time &&
+    Math.abs(last.equity - equity) <= tolerance
   );
 }

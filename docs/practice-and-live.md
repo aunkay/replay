@@ -129,3 +129,38 @@ Finer intervals cannot be reconstructed from coarse OHLC and are rejected. Intra
 ## Operations
 
 See [Docker deployment](docker.md) for the persistent volume, backup and startup behavior. The API, Node engine and frontend must all be available for server sessions, Live and strategies; the unsaved local replay remains usable without them. Native iOS packaging is still a starter project; automated mobile coverage uses iPhone 13 WebKit emulation.
+
+## Portfolio trading
+
+Open **Portfolio trading**, then add a loaded comparison or a saved dataset. The
+base ticker and up to five other tickers share one cash balance, 1× buying power,
+and a combined equity curve. Instruments must use the same currency, interval,
+and price adjustment; automatic currency conversion is not provided. Existing
+base-ticker positions are preserved when the portfolio is created.
+
+Choose a ticker in the portfolio ticket to place market, limit, or stop orders,
+with optional stop-loss and take-profit prices. The main chart ticket continues
+to trade the base ticker against the same shared buying power. Position cards
+show each ticker's entry price, last observed price, realized/unrealized P&L,
+protective orders, and close controls. Chart normalization only changes the
+presentation: all orders execute at actual instrument prices.
+
+Replay processes each ticker's candles in timestamp order. Pending orders at the
+same timestamp compete for capital in ticker order; another instrument's future
+close cannot fund an earlier fill. Missing candles retain the last observed mark,
+and manual replay orders require a current quote. Short proceeds do not create
+extra buying power. Each instrument has its own volume budget, with commissions
+and borrowing deducted from shared cash.
+
+Saved sessions, JSON archives, checkpoints, trade journals, CSV exports and the
+performance summary include portfolio positions. A checkpoint restores all
+positions and datasets together. Resetting the replay starts a new account.
+
+In Live mode, add an active chart comparison after its provider data arrives.
+Imported datasets cannot supply Live quotes. Orders queue for new completed
+candles; execution waits until all portfolio tickers have supplied the relevant
+history, accommodating staggered provider fetches without using future prices.
+A slow or unavailable ticker can therefore delay portfolio execution. Portfolio
+streams remain subscribed even if the comparison is removed from the chart.
+Background monitoring preserves these positions and queued orders across browser
+reconnection.

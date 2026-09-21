@@ -2932,3 +2932,16 @@ tr:hover td {
 .strategy-catalog {
   min-width: 0;
 }
+
+.portfolio-panel section { min-width: 0; }
+.portfolio-add, .portfolio-panel form { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.portfolio-panel label { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.portfolio-panel select, .portfolio-panel input { max-width: 100%; min-height: 44px; }
+.portfolio-panel .portfolio-add label { flex: 1 1 240px; }
+.portfolio-panel form label { flex: 1 1 130px; }
+.portfolio-panel form input { width: 100%; box-sizing: border-box; }
+.portfolio-metrics { display: flex; flex-wrap: wrap; gap: 20px; }
+.portfolio-metrics dd { margin: 4px 0; font-weight: 700; }
+.portfolio-positions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 12px; margin: 16px 0; }
+.portfolio-positions article { padding: 12px; border: 1px solid var(--border); border-radius: 8px; min-width: 0; overflow-wrap: anywhere; }
+.portfolio-positions article > button { display: block; margin: 8px 0; }

@@ -1,9 +1,13 @@
+import { advanceExecution } from './finerExecution';
+import type { MarketData } from './data';
 import {
   advanceBar,
   cancelOrder,
   closePosition,
   createAccount,
+  editBracket,
   submitOrder,
+  withEquity,
   type Candle,
   type EngineConfig,
   type EquityPoint,
@@ -67,6 +71,11 @@ export function portfolioMetrics(portfolio: Portfolio) {
     feesPaid += asset.account.feesPaid;
     borrowingPaid += asset.account.borrowingPaid ?? 0;
   }
+  const closes = portfolio.assets.flatMap((a) =>
+    a.account.orders.filter(
+      (o) => o.status === 'filled' && o.realizedPnl !== undefined,
+    ),
+  );
   const equity = portfolio.cash + marketValue;
   let peak = portfolio.config.initialCapital,
     maxDrawdown = 0;
@@ -75,6 +84,11 @@ export function portfolioMetrics(portfolio: Portfolio) {
     maxDrawdown = Math.max(maxDrawdown, (100 * (peak - point.equity)) / peak);
   }
   return {
+    closedTrades: closes.length,
+    winRate: closes.length
+      ? (100 * closes.filter((o) => (o.realizedPnl ?? 0) > 0).length) /
+        closes.length
+      : 0,
     cash: portfolio.cash,
     equity,
     marketValue,
@@ -222,7 +236,13 @@ export function cancelPortfolioOrder(
  */
 export function advancePortfolio(
   portfolio: Portfolio,
-  updates: { ticker: string; bar: Candle }[],
+  updates: {
+    ticker: string;
+    bar: Candle;
+    nextTime?: number;
+    finer?: MarketData;
+    markOnly?: boolean;
+  }[],
 ): Portfolio {
   let next = portfolio;
   const sorted = [...updates].sort(
@@ -235,7 +255,9 @@ export function advancePortfolio(
     if (!asset) throw new Error('Ticker is not in this portfolio.');
     if (update.bar.time <= asset.bar.time || update.bar.time < clock) continue;
     next = applyToAsset(next, update.ticker, (account) =>
-      advanceBar(account, update.bar),
+      update.markOnly
+        ? withEquity(account, update.bar)
+        : advanceExecution(account, update.bar, update.nextTime, update.finer),
     );
     next = {
       ...next,
@@ -246,4 +268,16 @@ export function advancePortfolio(
     next = markPortfolio(next);
   }
   return next;
+}
+
+export function editPortfolioBracket(
+  portfolio: Portfolio,
+  ticker: string,
+  stopLoss?: number,
+  takeProfit?: number,
+): Portfolio {
+  assertCurrentQuote(portfolio, ticker);
+  return applyToAsset(portfolio, ticker, (account, bar) =>
+    editBracket(account, stopLoss, takeProfit, bar),
+  );
 }

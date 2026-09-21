@@ -42,6 +42,7 @@ export default defineConfig({
         '**/research-validation.spec.ts',
         '**/execution.spec.ts',
         '**/finer-execution.spec.ts',
+        '**/portfolio.spec.ts',
         '**/insecure-origin.spec.ts',
         '**/replay-follow.spec.ts',
         '**/comparison-price.spec.ts',

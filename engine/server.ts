@@ -1,9 +1,17 @@
+import {
+  applyTradingCommand,
+  attachPortfolioMarket,
+} from '../src/lib/sessionPortfolio';
 import { validateFiner } from '../src/lib/finerExecution';
 import { runResearch } from '../src/lib/research';
 import { isValidMarketData } from '../src/lib/data';
 import { advanceReplay, alertCommand } from '../src/lib/alerts';
 import { applyCheckpoint } from '../src/lib/checkpoints';
-import { initializeLive, applyLiveTick } from '../src/lib/liveEngine';
+import {
+  initializeLive,
+  applyLiveTick,
+  validateLiveCommand,
+} from '../src/lib/liveEngine';
 import { createServer } from 'node:http';
 import {
   Worker,
@@ -11,12 +19,6 @@ import {
   parentPort,
   workerData,
 } from 'node:worker_threads';
-import {
-  submitOrder,
-  cancelOrder,
-  closePosition,
-  editBracket,
-} from '../src/lib/engine';
 import {
   runStrategy,
   optimizeStrategy,
@@ -153,8 +155,13 @@ if (!isMainThread) {
             body.market,
             body.pending,
             body.resumeAfter,
+            body.comparisonMarkets,
           ),
         );
+      if (request.url === '/validate-live-command') {
+        validateLiveCommand(body.session, body.command);
+        return send(200, { valid: true });
+      }
       if (request.url === '/command') {
         const { session, command } = body;
         const bar = session.market.bars[session.cursor];
@@ -171,19 +178,10 @@ if (!isMainThread) {
               'Restore checkpoints into a new session to preserve the original journal.',
             );
           next = applyCheckpoint(session, command);
-        } else if (command.type === 'order')
-          next.account = submitOrder(session.account, command.order, bar);
-        else if (command.type === 'cancel')
-          next.account = cancelOrder(session.account, command.id);
-        else if (command.type === 'close')
-          next.account = closePosition(session.account, bar);
-        else if (command.type === 'bracket')
-          next.account = editBracket(
-            session.account,
-            command.stopLoss,
-            command.takeProfit,
-            bar,
-          );
+        } else if (command.type === 'portfolio-add')
+          next = attachPortfolioMarket(session, command.market);
+        else if (['order', 'cancel', 'close', 'bracket'].includes(command.type))
+          next = applyTradingCommand(session, command);
         else if (command.type === 'advance') {
           next = advanceReplay(session, command.target ?? session.cursor + 1);
         } else throw new Error('Unknown command');

@@ -91,3 +91,20 @@ def advance_disconnected_live(id:str):
         _live_extra[symbol]=_live_extra.get(symbol,0)+1
         live._streams[monitor['keys'][0]]['nextAttempt']=0
     return {'advanced':True}
+
+@app.post('/api/test/live/{id}/portfolio-next')
+def advance_portfolio_live(id:str):
+    from backend import live
+    with live._lock:
+        monitor=live.lookup(id)
+        current=monitor['session']['market']['bars'][monitor['session']['cursor']]
+        monitor['resumeAfter']=0
+        for pending in monitor['pending']:
+            pending['submittedAt']=(current.get('endTime') or current['time'])+.1
+        # Other tests may have advanced just the base stream. Publish a common
+        # next candle for every ticker, rather than preserving that fixture gap.
+        next_extra=max(_live_extra.get(key[0],0) for key in monitor['keys'])+1
+        for key in monitor['keys']:
+            _live_extra[key[0]]=next_extra
+            live._streams[key]['nextAttempt']=0
+    return {'advanced':True}
