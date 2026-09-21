@@ -1,3 +1,4 @@
+import { RULE_INTERVALS, type RuleInterval } from '../lib/timeframes';
 import { useEffect, useState } from 'react';
 import { api } from '../lib/server';
 import EquityChart from './EquityChart';
@@ -118,6 +119,28 @@ function OperandEditor({
           </select>
         </>
       )}
+      {value.kind !== 'constant' && (
+        <label>
+          Rule timeframe
+          <select
+            aria-label="Rule timeframe"
+            value={value.interval ?? ''}
+            onChange={(e) =>
+              onChange({
+                ...value,
+                interval: (e.target.value as RuleInterval) || undefined,
+              })
+            }
+          >
+            <option value="">Base chart interval</option>
+            {Object.keys(RULE_INTERVALS).map((v) => (
+              <option key={v} value={v}>
+                {v}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <label>
         Bars ago
         <input
@@ -145,6 +168,12 @@ export function RuleEditor({
   return (
     <fieldset>
       <legend>{name}</legend>
+      <p className="field-hint">
+        Rule timeframes use completed UTC-aligned windows built from the loaded
+        data. Select the base interval or a larger aligned interval. Bars ago
+        counts candles in the selected timeframe; indicators need enough
+        higher-timeframe history.
+      </p>
       <select
         aria-label={`${name} matching`}
         value={value.join}

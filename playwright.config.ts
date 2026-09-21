@@ -38,6 +38,7 @@ export default defineConfig({
         '**/background-live.spec.ts',
         '**/data-library.spec.ts',
         '**/extended-hours.spec.ts',
+        '**/timeframe-rules.spec.ts',
         '**/insecure-origin.spec.ts',
         '**/replay-follow.spec.ts',
         '**/comparison-price.spec.ts',

@@ -1,4 +1,10 @@
 import {
+  aggregateTimeframe,
+  candleDuration,
+  RULE_INTERVALS,
+  type RuleInterval,
+} from './timeframes';
+import {
   advanceBar,
   closePosition,
   createAccount,
@@ -16,7 +22,7 @@ export type Operand = (
   | { kind: 'price'; field: 'open' | 'high' | 'low' | 'close' | 'volume' }
   | { kind: 'constant'; value: number }
   | { kind: 'indicator'; indicator: IndicatorId; period: number; plot?: string }
-) & { offset?: number };
+) & { offset?: number; interval?: RuleInterval };
 export type Condition = {
   left: Operand;
   op: 'gt' | 'lt' | 'crossUp' | 'crossDown';
@@ -95,6 +101,11 @@ export function validateStrategy(strategy: Strategy) {
         )
           throw new Error('Unknown rule operand');
         if (
+          operand.interval !== undefined &&
+          !(operand.interval in RULE_INTERVALS)
+        )
+          throw new Error('Unsupported rule interval');
+        if (
           !Number.isInteger(operand.offset ?? 0) ||
           (operand.offset ?? 0) < 0 ||
           (operand.offset ?? 0) > 500
@@ -122,11 +133,33 @@ export function validateStrategy(strategy: Strategy) {
 /** Evaluates rules using only the supplied candle history. */
 export function createRuleEvaluator(bars: Candle[]) {
   const operands = new Map<string, Map<number, number>>();
+  const higher = new Map<RuleInterval, Candle[]>();
+  const duration = candleDuration(bars);
   function value(operand: Operand, index: number): number | undefined {
-    index -= operand.offset ?? 0;
     if (index < 0 || index >= bars.length) return undefined;
     if (operand.kind === 'constant') return operand.value;
-    if (operand.kind === 'price') return bars[index]?.[operand.field];
+    let series = bars,
+      at = index;
+    if (operand.interval) {
+      if (!higher.has(operand.interval))
+        higher.set(
+          operand.interval,
+          aggregateTimeframe(bars, operand.interval),
+        );
+      series = higher.get(operand.interval)!;
+      const clock = bars[index].endTime ?? bars[index].time + duration;
+      let lo = 0,
+        hi = series.length;
+      while (lo < hi) {
+        const mid = (lo + hi) >>> 1;
+        if (series[mid].endTime! <= clock) lo = mid + 1;
+        else hi = mid;
+      }
+      at = lo - 1;
+    }
+    at -= operand.offset ?? 0;
+    if (at < 0 || at >= series.length) return undefined;
+    if (operand.kind === 'price') return series[at][operand.field];
     const key = JSON.stringify(operand);
     if (!operands.has(key)) {
       const plots = computeIndicator(
@@ -136,7 +169,7 @@ export function createRuleEvaluator(bars: Candle[]) {
           period: operand.period,
           color: '#ffffff',
         },
-        bars,
+        series,
       );
       const plot = operand.plot
         ? plots.find((p) => p.key === operand.plot)
@@ -146,7 +179,7 @@ export function createRuleEvaluator(bars: Candle[]) {
         new Map(plot?.data.map((p) => [p.time, p.value]) ?? []),
       );
     }
-    return operands.get(key)!.get(bars[index]?.time);
+    return operands.get(key)!.get(series[at].time);
   }
   function matches(rule: Rule, index: number) {
     if (!rule.conditions.length) return false;

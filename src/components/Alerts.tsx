@@ -44,7 +44,7 @@ export default function Alerts({
   }
   return (
     <details
-      className="alerts-panel"
+      className="alerts-panel market-alerts-panel"
       open={open}
       onToggle={(e) => setOpen(e.currentTarget.open)}
     >

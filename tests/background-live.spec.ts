@@ -81,7 +81,7 @@ test('background monitor records alerts with no browser lease and reconnects', a
     reconnect.getByLabel('Keep monitoring when browser closes'),
   ).toBeChecked();
   await expect(reconnect.getByRole('region',{name:'Live update status'})).toContainText('SPY 1d');
-  await reconnect.locator('.alerts-panel summary').click();
+  await reconnect.locator('.market-alerts-panel summary').click();
   await expect(
     reconnect
       .getByRole('region', { name: 'Market alerts' })

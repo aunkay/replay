@@ -15,7 +15,7 @@ sessions and strategy flows must remain compatible.
 | Strategy validation | Rolling train/test windows, parameter heatmaps, reproducible Monte Carlo distributions | Pending |
 | Execution realism | Configurable spread, volume participation/partial fills, short borrowing costs, optional lower-timeframe execution | Pending |
 | Data library / CSV | Server-persisted datasets, validated CSV import, missing-candle inspection, reusable data selection | Implemented; six import/API checks and desktop/iPhone import-inspect-reload-replay journeys pass |
-| Multi-timeframe rules | Per-rule interval selection; only completed higher-timeframe values at signal time | Pending |
+| Multi-timeframe rules | Per-rule interval selection; only completed higher-timeframe values at signal time | Implemented with causal UTC aggregation; unit boundary/warm-up/future-price tests and desktop/iPhone alert + worker journeys pass |
 | Extended hours | Request/cache/session support; explicit inclusion control; session chart shading | Implemented; cache/calendar API test and desktop/iPhone load-reload-Live journeys; replay-follow regression coverage |
 | Background Live | Explicit persisted server monitoring opt-in, browser-independent operation and alert history, safe restart/reconnect | Implemented; restart recovery API test and desktop/iPhone disconnect-alert-reconnect journeys pass |
 

@@ -48,7 +48,7 @@ for (const server of [false, true])
         .getByRole('button', { name: 'Close practice workspace' })
         .click();
     }
-    await page.locator('.alerts-panel summary').click();
+    await page.locator('.market-alerts-panel summary').click();
     const alerts = page.getByRole('region', { name: 'Market alerts' });
     await alerts.getByLabel('Alert name', { exact: true }).fill('Breakout 105');
     await alerts.getByLabel('Constant', { exact: true }).fill('105');
@@ -74,7 +74,7 @@ for (const server of [false, true])
     expect((await savedSession(page)).cursor).toBe(19);
     await expect(alerts.getByRole('listitem')).toContainText('Breakout 105');
     await page.reload();
-    await page.locator('.alerts-panel summary').click();
+    await page.locator('.market-alerts-panel summary').click();
     await expect(alerts.getByRole('listitem')).toContainText('Breakout 105');
     await alerts.getByRole('button', { name: 'Rearm alert' }).click();
     await expect(
@@ -91,7 +91,7 @@ test('indicator alerts and strategy templates can be configured', async ({
   isMobile,
 }) => {
   await page.goto('/');
-  await page.locator('.alerts-panel summary').click();
+  await page.locator('.market-alerts-panel summary').click();
   const alerts = page.getByRole('region', { name: 'Market alerts' });
   await alerts.getByLabel('Alert name', { exact: true }).fill('SMA positive');
   await alerts

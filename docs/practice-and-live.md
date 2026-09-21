@@ -96,6 +96,14 @@ Backtests run in a worker, separate from the API's trading engine requests. Inpu
 
 Results show net P&L, maximum drawdown and annualized Sharpe. Open the historical quick-test table to compare all templates against buy-and-hold on three ETFs. These reference results are separate from the loaded chart. See [research sources, methodology and reproducible results](strategy-research.md).
 
+## Multi-timeframe strategy and alert rules
+
+Each price or indicator operand has a **Rule timeframe** selector. Keep **Base chart interval**, or choose a larger aligned interval to combine, for example, a 5-minute entry signal with a daily trend filter. The same selector is available in market alerts. **Bars ago** counts bars in that operand's selected timeframe.
+
+Higher-timeframe candles are aggregated from the loaded dataset using UTC windows, with Monday-start weeks and calendar-month/quarter boundaries. They become available only at the window's scheduled close. This is conservative UTC aggregation, not an independently fetched exchange-session daily series; daily filters can update later than the exchange close. The first partially loaded window is discarded. Indicators require enough complete aggregated bars for warm-up. Load enough base history for the intended lookback.
+
+Finer intervals cannot be reconstructed from coarse OHLC and are rejected. Intraday intervals must divide cleanly into the chosen rule interval, and base candles cannot cross its boundaries; load finer data when necessary. Timeframe selections persist in saved strategies, run snapshots, alerts and session exports.
+
 ## Operations
 
 See [Docker deployment](docker.md) for the persistent volume, backup and startup behavior. The API, Node engine and frontend must all be available for server sessions, Live and strategies; the unsaved local replay remains usable without them. Native iOS packaging is still a starter project; automated mobile coverage uses iPhone 13 WebKit emulation.

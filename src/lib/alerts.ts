@@ -1,3 +1,4 @@
+import { aggregateTimeframe } from './timeframes';
 import {
   createRuleEvaluator,
   defaultStrategy,
@@ -66,6 +67,10 @@ export function alertCommand(
       armedAfter: session.market.bars[session.cursor].time,
     };
     validateAlert(alert);
+    for (const c of alert.rule.conditions)
+      for (const operand of [c.left, c.right])
+        if (operand.interval)
+          aggregateTimeframe(session.market.bars, operand.interval);
     return { ...session, alerts: [...alerts, structuredClone(alert)] };
   }
   if (!alerts.some((a) => a.id === command.id))
