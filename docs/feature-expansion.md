@@ -49,5 +49,21 @@ stream. Gap and adjusted-history checks cover all traded portfolio tickers.
 
 ## Release
 
-Code and browser verification are complete. Deployment and production smoke checks
-are recorded separately when the release is installed on port 8080.
+Released on 2026-09-22. Application code commit `0ab1c9a` was pushed to
+`aunkay/replay` and installed with `docker compose up -d --build` on port 8080.
+
+- API and engine containers report healthy; `/api/health` returns `status: ok`.
+- A production smoke journey created a temporary server session, attached a
+  comparison, traded both symbols through the actual API/engine, advanced replay,
+  saved a checkpoint and verified distinct journal entries. The temporary session
+  was deleted afterward.
+- Chromium and iPhone WebKit loaded that portfolio from the deployed frontend;
+  positions rendered correctly, the phone had no horizontal overflow, and neither
+  browser reported runtime errors.
+- Public desktop/iPhone screenshots were refreshed from the deployed application.
+- Docker is enabled at boot. Both containers use `restart: unless-stopped` and the
+  existing persistent data volume.
+
+GitHub-hosted CI could not start: [run 35670289311](https://github.com/aunkay/replay/actions/runs/35670289311)
+reports an account billing lock for both jobs. This is distinct from the passing
+local build, unit/API/E2E checks and deployed-container smoke verification above.

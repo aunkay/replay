@@ -95,6 +95,10 @@ Only revealed candles are available to the simulation. Seeking forward processes
 
 The strategy catalog includes a 150-run reference study across SPY, QQQ and GLD, with costs and buy-and-hold comparisons. See [strategy research, sources and reproducible results](docs/strategy-research.md). Templates are research starting points, not promises of profitability.
 
+### Shared portfolio trading
+
+![Shared portfolio cash, positions, P&L and order ticket using synthetic demo data](docs/images/replay-portfolio.png)
+
 ### Indicator menu
 
 ![Searchable indicator menu with active studies and configurable parameters](docs/images/replay-indicators.png)
