@@ -1,4 +1,35 @@
+import { mkdir, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test, expect } from './helpers/workspace';
+
+// Both browser projects share one server-wide connection. Serialize only this
+// destructive settings journey; unrelated chart tests can remain parallel.
+const lock = join(tmpdir(), `replay-telegram-settings-${process.ppid}`);
+let ownsLock = false;
+test.beforeAll(async () => {
+  test.skip(
+    Boolean(process.env.PLAYWRIGHT_BASE_URL),
+    'Requires the offline Telegram fixture server.',
+  );
+  const deadline = Date.now() + 25_000;
+  while (!ownsLock) {
+    try {
+      await mkdir(lock);
+      ownsLock = true;
+    } catch (error) {
+      if (
+        (error as NodeJS.ErrnoException).code !== 'EEXIST' ||
+        Date.now() > deadline
+      )
+        throw error;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+});
+test.afterAll(async () => {
+  if (ownsLock) await rm(lock, { recursive: true, force: true });
+});
 
 test('Telegram setup discovers a chat, saves without resetting account, tests and disconnects', async ({
   page,
