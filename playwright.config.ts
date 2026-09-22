@@ -35,6 +35,7 @@ export default defineConfig({
         '**/advanced-trading.spec.ts',
         '**/checkpoints.spec.ts',
         '**/alerts.spec.ts',
+        '**/telegram.spec.ts',
         '**/background-live.spec.ts',
         '**/data-library.spec.ts',
         '**/extended-hours.spec.ts',

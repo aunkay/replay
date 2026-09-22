@@ -1,3 +1,4 @@
+import { TelegramSettings } from './components/TelegramSettings';
 import PortfolioPanel from './components/PortfolioPanel';
 import { portfolioMetrics } from './lib/portfolio';
 import {
@@ -587,6 +588,41 @@ export default function App() {
     });
     setHoverBar(null);
   }, [live.active, session.blind, session.cursor, library.record]);
+
+  const notificationPrevious = useRef(session);
+  useEffect(() => {
+    const previous = notificationPrevious.current;
+    notificationPrevious.current = session;
+    if (
+      live.active ||
+      library.record ||
+      session.mode === 'live' ||
+      previous.market !== session.market ||
+      session.cursor <= previous.cursor
+    )
+      return;
+    const known = new Set(previous.alertEvents?.map((e) => e.id));
+    const events = (session.alertEvents ?? []).filter((e) => !known.has(e.id));
+    if (!events.length) return;
+    void fetch('/api/notifications/telegram/replay-events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ticker: session.market.ticker,
+        interval: session.market.interval,
+        events,
+      }),
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error('Telegram alert could not be queued.');
+      })
+      .catch(() =>
+        setNotice({
+          text: 'Telegram alert could not be queued. Check the server connection.',
+          error: true,
+        }),
+      );
+  }, [session, live.active, library.record]);
 
   const lastAlert = useRef(session.alertEvents?.at(-1)?.id);
   useEffect(() => {
@@ -2899,6 +2935,7 @@ export default function App() {
             {dialog === 'settings' && (
               <>
                 <h2 id="dialog-title">Make it your account.</h2>
+                <TelegramSettings />
                 <p className="modal-description">
                   Set your starting balance and execution costs. Applying
                   settings starts a fresh account at this candle.

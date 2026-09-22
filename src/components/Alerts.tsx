@@ -117,7 +117,7 @@ export default function Alerts({
         {session.alerts?.map((a) => (
           <article key={a.id} aria-label={`Alert ${a.name}`}>
             <strong>{a.name}</strong> · {a.enabled ? 'Armed' : 'Triggered'} ·{' '}
-            {a.pause ? 'Pauses replay' : 'Notification only'}
+            {a.pause ? 'Pauses replay' : 'In-app notice (Telegram if enabled)'}
             <div>
               <button
                 className="button"

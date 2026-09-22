@@ -22,6 +22,10 @@ def persist(session):
     snapshot=copy.deepcopy(session['session']);snapshot['mode']='live'
     payload=json.dumps({'session':snapshot,'live':{'active':session['active'],'gap':session['gap'],'background':session.get('background',False),'resumeAfter':session.get('resumeAfter',0),'controller':session.get('controller'),'error':session.get('error'),'streams':[{'ticker':key[0],'interval':key[1],'extendedHours':key[2]} for key in session['keys']],'pending':session['pending']}})
     with db() as conn:
+        from backend.notifications import enqueue
+        old=conn.execute('SELECT payload FROM sessions WHERE id=?',(session['id'],)).fetchone()
+        if old:
+            enqueue(conn,session['id'],snapshot,json.loads(old['payload'])['session'])
         conn.execute('INSERT INTO sessions(id,name,revision,payload,updated) VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,revision=sessions.revision+1,updated=excluded.updated',(session['id'],f"Live {session['keys'][0][0]}",1,payload,time.time()))
 
 def snapshot(session):

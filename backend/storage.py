@@ -43,6 +43,8 @@ def db():
         # busy_timeout applies. Initialize once before accepting other readers.
         conn.execute('PRAGMA journal_mode=WAL')
         conn.executescript('''
+        CREATE TABLE IF NOT EXISTS notification_settings(id INTEGER PRIMARY KEY,payload TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS notification_outbox(id TEXT PRIMARY KEY,message TEXT NOT NULL,status TEXT NOT NULL,attempts INTEGER NOT NULL,due REAL NOT NULL,error TEXT);
         CREATE TABLE IF NOT EXISTS datasets(id TEXT PRIMARY KEY,name TEXT NOT NULL,market TEXT NOT NULL,gaps TEXT NOT NULL,updated REAL NOT NULL);
         CREATE TABLE IF NOT EXISTS schema_version(version INTEGER PRIMARY KEY);
         INSERT OR IGNORE INTO schema_version VALUES(1);
@@ -133,7 +135,10 @@ def command(id:str,body:dict=Body(...)):
         if old: return json.loads(old['response'])
         writable(row,body)
         payload=json.loads(row['payload'])
+        previous_session=payload['session']
         payload['session']=engine('/command',dict(session=payload['session'],command=body.get('command')))
+        from backend.notifications import enqueue
+        enqueue(conn,id,payload['session'],previous_session)
         # Materialize opening-trade journal rows without replacing user notes.
         accounts=[a['account'] for a in payload['session']['portfolio']['book']['assets']] if payload['session'].get('portfolio') else [payload['session']['account']]
         for account in accounts:

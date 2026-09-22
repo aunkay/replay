@@ -300,6 +300,9 @@ app.include_router(storage_router)
 from backend.live import router as live_router
 app.include_router(live_router)
 
+from backend.notifications import router as notification_router
+app.include_router(notification_router)
+
 dist = Path(__file__).resolve().parent.parent / "dist"
 if dist.is_dir() and (dist / "index.html").is_file():
     assets = dist / "assets"
@@ -319,3 +322,5 @@ if dist.is_dir() and (dist / "index.html").is_file():
 def resume_background_monitors():
     from backend.live import recover_background
     recover_background()
+    from backend.notifications import start_worker
+    start_worker()

@@ -108,3 +108,17 @@ def advance_portfolio_live(id:str):
             _live_extra[key[0]]=next_extra
             live._streams[key]['nextAttempt']=0
     return {'advanced':True}
+
+# Telegram remains entirely offline in browser tests, including its worker.
+from backend import notifications as telegram_notifications
+
+def fixture_telegram(token, method, payload=None):
+    if token != '123456:e2e_fake_token':
+        raise telegram_notifications.TelegramError(401)
+    if method == 'getMe':
+        return {'username': 'replay_e2e_bot'}
+    if method == 'getUpdates':
+        return [{'message': {'chat': {'id': 123456, 'first_name': 'Replay tester'}}}]
+    return {'message_id': 1}
+
+telegram_notifications.telegram = fixture_telegram

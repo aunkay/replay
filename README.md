@@ -172,3 +172,18 @@ Yahoo Finance availability, rate limits, and historical intraday coverage vary. 
 Replay is licensed under the [MIT License](LICENSE). Third-party dependencies retain their own licenses; see [third-party notices](THIRD_PARTY_NOTICES.md).
 
 Charting uses [TradingView Lightweight Charts™](https://github.com/tradingview/lightweight-charts), licensed under Apache 2.0. Replay is an independent project and is not affiliated with TradingView or Yahoo Finance.
+
+## Telegram alert notifications
+
+Open **Account settings → Telegram notifications** (the account settings button is also available in the mobile menu).
+
+1. Create a bot through [@BotFather](https://t.me/BotFather) with `/newbot` and copy its token.
+2. Open the new bot in Telegram and send `/start`. Paste its token in Replay, choose **Find Telegram chats**, then select your chat. You can also enter a numeric chat ID or a channel `@username` manually; the bot must have permission to send there. Chat discovery requires recent messages and a bot without an active webhook.
+3. Check **Enable Telegram notifications**, save, and select **Send test message**. No Telegram password or personal-account login is needed: the bot token authenticates the [Telegram Bot API](https://core.telegram.org/bots/api).
+4. Create price, indicator, or strategy conditions in the chart’s **Alerts** menu. Each alert evaluates completed candles and fires once until rearmed. Messages include ticker, interval, alert name, close price, and candle time in UTC.
+
+Live notifications run on the server. Enable **Background monitoring** to continue evaluating Live alerts after closing the browser; the server must remain running. Live monitoring uses the existing yfinance polling schedule, so these are candle-based alerts, not tick-by-tick push quotes. **Also send replay alerts** is off by default; turn it on to send practice alerts as replay advances. Merely restoring history does not send old alerts.
+
+Credentials are stored in the server’s SQLite database, never returned to the browser or included in session exports. They are not encrypted at rest; protect the server volume and its backups. Settings are shared by this single-user server. Disconnect removes the saved token and cancels pending deliveries. Changing the bot or destination also cancels pending messages; an already in-flight request may finish.
+
+A persistent outbox deduplicates alert events and retries temporary errors with exponential backoff, honoring Telegram’s `retry_after`. After eight failed attempts, delivery is marked failed. Use **Refresh delivery status** to inspect the latest queued alert. Telegram does not offer an idempotency key for `sendMessage`, so a timeout or server crash after Telegram accepts a message can still cause a duplicate on retry. Test messages are sent only when you click the test button. Automated tests use a fake Telegram transport and never send real messages.

@@ -1244,3 +1244,46 @@
 .execution-settings label { display: grid; gap: 6px; }
 .execution-settings input { min-width: 0; width: 100%; padding: 9px; background: #171d28; color: #e4e8f0; border: 1px solid #364054; border-radius: 5px; }
 .execution-settings p, .execution-settings span { font-size: 12px; color: #a3adbd; }
+
+.telegram-settings {
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid var(--border, #34404e);
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+.telegram-settings summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+}
+.telegram-settings p,
+.telegram-settings li {
+  font-size: 13px;
+  line-height: 1.5;
+}
+.telegram-settings ol {
+  padding-left: 20px;
+}
+.telegram-settings select {
+  width: 100%;
+  min-height: 44px;
+}
+.telegram-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+.telegram-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.telegram-settings button {
+  min-height: 44px;
+  white-space: normal;
+}
