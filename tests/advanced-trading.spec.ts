@@ -68,6 +68,21 @@ test('three profit levels scale out and preserve the remaining stop across reloa
         ).length,
     )
     .toBe(4);
+  // Adjust one handle without replacing the staged exits or their allocations.
+  await page
+    .getByRole('button', { name: 'Drag stop-loss price', exact: true })
+    .press('ArrowUp');
+  await page
+    .getByRole('button', { name: 'Drag take-profit price', exact: true })
+    .first()
+    .press('ArrowUp');
+  const adjusted = (await savedSession(page)).account.orders.filter(
+    (o) => o.status === 'pending',
+  );
+  expect(adjusted).toHaveLength(4);
+  expect(
+    adjusted.filter((o) => o.role === 'takeProfit').map((o) => o.quantity),
+  ).toEqual([3, 3, 4]);
   const step = () =>
     page
       .getByRole('button', {

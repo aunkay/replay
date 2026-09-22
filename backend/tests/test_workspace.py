@@ -156,3 +156,18 @@ def test_background_opt_in_restart_and_stop(client,monkeypatch):
     assert client.delete(f'/api/live/{id}').status_code==200
     live._sessions.clear();live.recover_background()
     assert client.get('/api/live').json()==[]
+
+def test_missing_comparison_history_pauses_portfolio_without_affecting_analysis_streams(monkeypatch):
+    snapshots=[]
+    monkeypatch.setattr(live,'persist',lambda s:snapshots.append(copy.deepcopy(s)))
+    session={'active':True,'gap':False,'resumeAfter':0,'keys':[('AAPL','1m',False),('SPY','1m',False)],'session':{
+        'market':{'bars':[{'time':100}]},'cursor':0,
+        'portfolio':{'markets':[{'ticker':'SPY','interval':'1m'}],'book':{'assets':[{'ticker':'SPY','bar':{'time':90}}]}}
+    }}
+    live.pause_missing_history(session,('MSFT','1m',False),200)
+    assert session['active'] and not snapshots
+    live.pause_missing_history(session,('SPY','1m',False),80)
+    assert session['active']
+    live.pause_missing_history(session,('SPY','1m',False),200)
+    assert not session['active'] and session['gap']
+    assert len(snapshots)==1

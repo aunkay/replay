@@ -66,6 +66,7 @@ export type Position = { quantity: number; averagePrice: number };
 export type EquityPoint = { time: number; equity: number };
 export type TradingState = {
   config: EngineConfig;
+  orderNamespace?: string;
   /** Transient portfolio capital context; supplied by the portfolio engine. */
   capitalContext?: { marketValue: number; exposure: number };
   cash: number;
@@ -396,7 +397,7 @@ function executeOrder(
   if (remaining > 1e-10) {
     const continuation: Order = {
       ...order,
-      id: `order-${next.orders.length + 1}`,
+      id: orderIdentifier(next, next.orders.length + 1),
       quantity: remaining,
       status: 'pending',
       createdAt: time,
@@ -472,7 +473,7 @@ function executeFullOrder(
     for (const role of ['stopLoss', 'takeProfit'] as const) {
       if (order[role] === undefined) continue;
       children.push({
-        id: `order-${next.orders.length + children.length + 1}`,
+        id: orderIdentifier(next, next.orders.length + children.length + 1),
         side: next.position.quantity > 0 ? 'sell' : 'buy',
         type: role === 'stopLoss' ? 'stop' : 'limit',
         quantity: Math.abs(next.position.quantity),
@@ -486,7 +487,7 @@ function executeFullOrder(
     }
     for (const target of order.takeProfits ?? []) {
       children.push({
-        id: `order-${next.orders.length + children.length + 1}`,
+        id: orderIdentifier(next, next.orders.length + children.length + 1),
         side: next.position.quantity > 0 ? 'sell' : 'buy',
         type: 'limit',
         quantity: (Math.abs(next.position.quantity) * target.percent) / 100,
@@ -534,7 +535,7 @@ export function editBracket(
         orders: [
           ...next.orders,
           {
-            id: `order-${next.orders.length + 1}`,
+            id: orderIdentifier(next, next.orders.length + 1),
             side: state.position.quantity > 0 ? 'sell' : 'buy',
             type: role === 'stopLoss' ? 'stop' : 'limit',
             quantity: Math.abs(state.position.quantity),
@@ -735,7 +736,7 @@ export function submitOrder(
     ...(request.plannedRisk !== undefined
       ? { plannedRisk: request.plannedRisk }
       : {}),
-    id: `order-${state.orders.length + 1}`,
+    id: orderIdentifier(state, state.orders.length + 1),
     side: request.side,
     type: request.type,
     quantity: Number.isFinite(request.quantity) ? request.quantity : 0,
@@ -964,7 +965,7 @@ function updateDynamicProtection(
       orders: [
         ...next.orders,
         {
-          id: `order-${next.orders.length + 1}`,
+          id: orderIdentifier(next, next.orders.length + 1),
           side: direction > 0 ? 'sell' : 'buy',
           type: 'stop',
           quantity: Math.abs(state.position.quantity),
@@ -1051,5 +1052,54 @@ export function getMetrics(
       : 0,
     closedTrades: closingOrders.length,
     maxDrawdown,
+  };
+}
+
+function orderIdentifier(state: TradingState, index: number): string {
+  return `${state.orderNamespace ?? ''}order-${index}`;
+}
+
+/** Move one pending protection level without replacing the other exits. */
+export function editProtectionLevel(
+  state: TradingState,
+  id: string,
+  price: number,
+  bar: Candle,
+): TradingState {
+  const order = state.orders.find(
+    (o) => o.id === id && o.status === 'pending' && o.reduceOnly,
+  );
+  if (!finitePositive(price))
+    throw new Error('Protection price must be positive.');
+  if (!order || !order.role || order.queuedMarket)
+    throw new Error('This protection level is no longer editable.');
+  if (
+    !state.position.quantity ||
+    !validBar(bar) ||
+    bar.time < (latestTime(state) ?? bar.time)
+  )
+    throw new Error('A current position and candle are required.');
+  validateProtection(
+    state.position.quantity > 0 ? 'buy' : 'sell',
+    bar.close,
+    order.role === 'stopLoss' ? price : undefined,
+    order.role === 'takeProfit' ? price : undefined,
+  );
+  if (
+    order.role === 'takeProfit' &&
+    state.orders.some(
+      (o) =>
+        o.id !== id &&
+        o.status === 'pending' &&
+        o.role === 'takeProfit' &&
+        o.price === price,
+    )
+  )
+    throw new Error('Choose a distinct target price.');
+  return {
+    ...state,
+    orders: state.orders.map((o) =>
+      o.id === id ? { ...o, price, createdAt: bar.time } : o,
+    ),
   };
 }

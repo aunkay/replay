@@ -13,7 +13,7 @@ A self-hosted market replay and paper trading app. Load historical prices, revea
 
 - **Historical data:** choose a Yahoo Finance ticker, interval, and period or date range. No API key required.
 - **Candle replay:** play, pause, adjust speed, step, and seek. The chart follows the latest candle while you are at the right edge; browsing earlier history preserves your view.
-- **Paper trading:** market, limit, and stop orders; long and short positions; configurable capital, commissions, and slippage.
+- **Paper trading:** market, limit, and stop orders; long and short positions; configurable commissions, spread, slippage, borrowing and volume-limited partial fills.
 - **Performance:** realized and unrealized P&L, equity, cash, exposure, returns, drawdown, order history, and CSV exports.
 - **Volume inspection:** hover a candle or volume bar to see its exact volume and timestamp; tap or long-press to inspect on mobile.
 - **50 technical indicators:** searchable menu, multiple instances, configurable periods and colors, overlays and oscillator panes.
@@ -21,13 +21,16 @@ A self-hosted market replay and paper trading app. Load historical prices, revea
 - **Compare six tickers:** one base instrument plus five comparison tickers, using the same interval. Keep the base price readout alongside normalized comparisons.
 - **Flexible scales:** price, percentage, indexed-to-100, ratio, log return, z-score, and min–max normalization, plus logarithmic price spacing where applicable.
 - **Mobile layout:** touch controls, an iPhone 13 browser test suite, and a SwiftUI/WKWebView starter for a future self-hosted iOS app.
-- **Protected trades and risk sizing:** stop-loss/take-profit OCO brackets, draggable levels, fixed cash or percentage-equity risk budgets.
+- **Protected trades and risk sizing:** trailing stops, break-even activation, up to three take-profit levels, draggable brackets, and cash or percentage-equity risk budgets.
+- **Portfolio trading:** trade the base and five comparisons with shared cash, buying power, positions, journals and portfolio P&L.
+- **Replay checkpoints and alerts:** save exact retry points; use price, indicator or strategy alerts with optional replay pause.
+- **Data library:** persist datasets, import validated OHLCV CSV files, inspect gaps, include extended hours and optionally use finer candles for execution.
 - **Session library:** server-saved accounts and chart preferences, controller handoff between devices, ZIP import/export and browser-session migration.
 - **Trading journal and analytics:** notes, tags, setup names, chart screenshots, flat-to-flat trade statistics, R multiples, MAE/MFE and CSV exports.
 - **Blind exercises:** random fixed-length replay with hidden dates, saved seeds and explicit finish.
 - **Up to four synchronized charts:** independent intervals, indicators, drawings and comparisons; desktop grids and stacked phone panels.
-- **Visual strategies:** 24 searchable, source-linked strategy templates, P&L/drawdown/Sharpe metrics, worker-backed backtests and up to 500 parameter combinations with chronological training/test separation.
-- **Optional Live mode:** shared yfinance polling, provisional candles, a separate closed-bar paper account, spaced requests and exponential throttling backoff. Live always starts off.
+- **Visual strategies:** 24 source-linked templates, multi-timeframe rules, worker-backed backtests, up to 500 parameter combinations, rolling walk-forward validation, stability heatmaps and seeded Monte Carlo analysis.
+- **Optional Live mode:** shared yfinance polling, provisional candles, a separate closed-bar paper account, spaced requests and exponential throttling backoff. Live starts off; opt-in background monitoring continues paper orders and alerts after the browser closes and recovers after server restart.
 
 Strategies use the built-in visual rule builder. Replay does not execute Pine Script or connect to a live broker. Read the [practice and live guide](docs/practice-and-live.md) for execution rules and limits.
 

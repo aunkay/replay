@@ -1,4 +1,4 @@
-For the server library, protected orders, journal, blind exercises, synchronized panels, visual strategies and Live mode, see the [practice and live guide](practice-and-live.md).
+For portfolios, checkpoints, alerts, the data library, extended hours, protected orders, journals, blind exercises, synchronized panels, strategy validation and background Live mode, see the [practice and live guide](practice-and-live.md).
 
 # Replay · Market Lab
 
@@ -17,7 +17,7 @@ npm install
 
 Open [http://localhost:5173](http://localhost:5173). The launcher starts the frontend on port 5173, the API on port 8000 and the simulation engine on port 8003. Ctrl+C stops all three services and their child processes. If one service exits, the others are stopped as well. The launcher is for Bash on Linux/macOS.
 
-You can also run the two services in separate terminals:
+You can also run the three services in separate terminals:
 
 ```bash
 # Terminal 1, repository root
@@ -29,6 +29,11 @@ You can also run the two services in separate terminals:
 npm run dev -- --port 5173 --strictPort
 ```
 
+```bash
+# Terminal 3, repository root
+npm run engine
+```
+
 Vite proxies `/api` requests to `http://127.0.0.1:8000`. No Yahoo Finance account or API key is required.
 
 ## Use the workspace
@@ -37,7 +42,7 @@ Vite proxies `/api` requests to `http://127.0.0.1:8000`. No Yahoo Finance accoun
 2. Load the data, then reveal candles with play/pause, speed controls, or a single step. Future candles stay hidden on the chart. Seeking forward processes every skipped candle so pending orders and equity remain consistent.
 3. Set the order side, quantity, and market, limit, or stop type. Buy to enter a long position or close a short; sell to enter a short or close a long. You can cancel pending orders or close the entire position.
 4. Inspect realized/unrealized P&L, equity, cash, exposure, fees, returns, drawdown, and order history. Export the session summary, orders, and equity history as CSV.
-5. Configure starting capital, commission, and slippage in session settings. Rewinding or changing the dataset starts a fresh paper account so later trades cannot carry backward into earlier candles.
+5. Configure starting capital, commission, slippage, spread, short borrowing and volume participation in session settings. Rewinding or changing the dataset starts a fresh paper account so later trades cannot carry backward into earlier candles.
 
 The initial workspace uses an explicitly labeled **synthetic demo** so you can explore immediately. Demo candles are generated data, not downloaded prices. Loading Yahoo Finance data replaces the demo; a provider error is displayed and never silently substituted with synthetic data.
 
@@ -93,7 +98,7 @@ The drawing toolbar includes **trend line, ray, extended line, horizontal line, 
 
 Drawings store time/price anchors and stay aligned when replaying, panning, zooming, or resizing. They are saved separately for each source, ticker, and interval. Rewinding hides drawings with future anchors until those candles become visible again. Undo history is limited to the latest 50 edits in the current page session; drawings themselves survive a reload.
 
-The active dataset, replay position, paper account, and order history are saved in this browser's local storage. This is one local session rather than a server account: clearing browser storage removes it, and other browsers/devices do not share it. Very large datasets can exceed the browser's storage quota; the workspace reports when saving fails.
+The active dataset, replay position, paper account, and order history are saved in this browser's local storage. Unsaved work is local to this browser; use **Practice & research → Sessions** to save on the server and continue across devices. Very large datasets can exceed the browser's storage quota; the workspace reports when saving fails.
 
 ### iPhone and iOS WebView
 
@@ -113,9 +118,9 @@ Limit and stop orders become eligible only on later candles. Buy limits trigger 
 
 Commission is charged on every fill as `quantity × fill price × commission bps / 10,000`. One basis point is 0.01%. Market and stop fills add adverse slippage in basis points; limit fills have no extra slippage and respect their limit. P&L uses average entry cost, and total P&L includes all commissions. The reported win rate counts closing fills rather than grouping complete round trips; the per-fill realized value deducts that fill's commission, while the account's realized P&L includes commissions on opening fills too.
 
-New exposure is limited to **1× account equity at execution**. Short-sale proceeds do not increase buying power. Orders are checked when they fill; pending orders do not reserve capital. Position-reducing orders remain available when equity has fallen. Long and short positions, fractional quantities, partial closes, and reversals are supported for a single selected instrument.
+New exposure is limited to **1× account equity at execution**. Short-sale proceeds do not increase buying power. Orders are checked when they fill; pending orders do not reserve capital. Position-reducing orders remain available when equity has fallen. Long and short positions, fractional quantities, partial closes, and reversals are supported for the base instrument and attached same-currency portfolio tickers sharing one cash balance.
 
-There is no Pine Script interpreter or automated strategy runner, brokerage connection, live order execution, order-book/liquidity simulation, partial-fill model, borrow cost/availability model, forced liquidation, or multi-asset portfolio accounting. Contract multipliers and currency conversions are not modeled; quantities represent units of the displayed price series.
+Strategy lab runs visual strategies with configurable execution costs, multi-timeframe rules and validation tools. The execution engine supports volume-limited partial fills, short borrowing costs and optional finer-candle paths. It does not provide a Pine Script interpreter, brokerage connection, real-money execution, order-book queue simulation, borrow availability or forced liquidation. Contract multipliers and currency conversions are not modeled; quantities represent units of the displayed price series.
 
 ## Historical data
 

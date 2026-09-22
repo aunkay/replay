@@ -1,54 +1,53 @@
 # Replay feature expansion
 
-Scope: implement the eleven requested additions; native iOS packaging is excluded.
-Each item requires user-facing controls, persisted state where applicable, deterministic
-engine behavior, and desktop/mobile browser coverage. Existing replay, Live, saved
-sessions and strategy flows must remain compatible.
+Scope: all eleven requested additions. Native iOS packaging is excluded; iPhone
+browser usability and WebKit end-to-end coverage remain included.
 
-| Feature | Acceptance criteria | Status |
+| Feature | Delivered behavior | Verification |
 | --- | --- | --- |
-| Trailing stops / break-even | Price, percent and ATR trailing; configurable break-even activation; prospective updates for long/short positions | Engine and ticket implemented; desktop/iPhone replay and reload tests pass; broader integration pending |
-| Multiple take profits | Up to three price/percentage allocations; remaining position stays protected; conservative ambiguous-bar execution | Engine and ticket implemented; desktop/iPhone reload journey passes; broader saved/Live coverage pending |
-| Bookmarks / checkpoints | Name, save, restore and retry replay with exact account state; dataset identity and saved-session handling | Implemented; desktop/iPhone browser and server retry/reload journeys pass |
-| Alerts | Price crossings, indicator crossings, strategy conditions; notifications and optional replay pause; no future data | Implemented; six desktop/iPhone journeys pass; Live engine tests pass; background coverage pending |
-| Portfolio trading | Trade base and comparisons using shared cash, buying power, positions and portfolio P&L | Shared accounting, replay/Live/session/checkpoint integration, trading controls and portfolio journal/exports implemented; six desktop/iPhone replay/server/checkpoint/journal/Live journeys pass; full regression pending |
-| Strategy validation | Rolling train/test windows, parameter heatmaps, reproducible Monte Carlo distributions | Implemented; causal selection/bootstrap unit checks and desktop/iPhone worker + heatmap journeys pass |
-| Execution realism | Configurable spread, volume participation/partial fills, short borrowing costs, optional lower-timeframe execution | Spread, borrow costs and shared-volume partial fills implemented; finer-candle replay added with desktop/iPhone target-before-stop tests; strategy integration and financing attribution implemented; full Live integration audit remains |
-| Data library / CSV | Server-persisted datasets, validated CSV import, missing-candle inspection, reusable data selection | Implemented; six import/API checks and desktop/iPhone import-inspect-reload-replay journeys pass |
-| Multi-timeframe rules | Per-rule interval selection; only completed higher-timeframe values at signal time | Implemented with causal UTC aggregation; unit boundary/warm-up/future-price tests and desktop/iPhone alert + worker journeys pass |
-| Extended hours | Request/cache/session support; explicit inclusion control; session chart shading | Implemented; cache/calendar API test and desktop/iPhone load-reload-Live journeys; replay-follow regression coverage |
-| Background Live | Explicit persisted server monitoring opt-in, browser-independent operation and alert history, safe restart/reconnect | Implemented; restart recovery API test and desktop/iPhone disconnect-alert-reconnect journeys pass |
+| Trailing stops / break-even | Price, percent and ATR trailing; configurable break-even; prospective long/short updates; strategy controls | `brackets.test.ts`, `advanced-trading.spec.ts`, `live-protection.spec.ts` |
+| Multiple take profits | Three allocated targets; remaining position protected; individual chart-level edits preserve other exits | `brackets.test.ts`, `advanced-trading.spec.ts`, `live-protection.spec.ts` |
+| Bookmarks / checkpoints | Named exact-state retries, dataset identity, local restore and server-session fork, including portfolios and alerts | `checkpoints.test.ts`, `sessionPortfolio.test.ts`, `checkpoints.spec.ts`, `portfolio.spec.ts` |
+| Alerts | Price/indicator/strategy conditions, history, optional replay pause, completed-bar Live and background evaluation | `alerts.test.ts`, `alerts.spec.ts`, `background-live.spec.ts` |
+| Portfolio trading | Base plus five comparisons, shared cash and gross-exposure limits, positions, P&L, distinct journals and exports; replay and Live | `portfolio.test.ts`, `sessionPortfolio.test.ts`, `portfolio.spec.ts` |
+| Strategy validation | Rolling training/test windows, training-only parameter selection, heatmaps, reproducible Monte Carlo distributions | `research.test.ts`, `research-validation.spec.ts` |
+| Execution realism | Spread, volume-limited partial fills, short financing attributed to trades, optional reconciled finer-candle replay/strategy/Live execution | `execution.test.ts`, `finerExecution.test.ts`, `execution.spec.ts`, `finer-execution.spec.ts`, `live-protection.spec.ts` |
+| Data library / CSV | Persisted datasets, validated CSV import, missing-slot inspection, dataset reuse | `backend/tests/test_datasets.py`, `data-library.spec.ts` |
+| Multi-timeframe rules | Per-rule intervals using only completed, causal higher-timeframe aggregates | `timeframes.test.ts`, `timeframe-rules.spec.ts` |
+| Extended hours | Optional provider requests, isolated caches/streams, persisted selection and chart shading | `backend/tests/test_api.py`, `extended-hours.spec.ts` |
+| Background Live | Explicit persisted opt-in, browser-independent polling/orders/alerts, restart recovery, gap detection and reconnection | `backend/tests/test_workspace.py`, `background-live.spec.ts`, `portfolio.spec.ts` |
 
-## Verification and release
+Test filenames without a directory refer to `src/lib/` for unit tests and `tests/`
+for browser tests. The named feature journeys run in Chromium and iPhone 13 WebKit.
 
-Add meaningful engine/API tests and end-to-end journeys for each row, including
-invalid input and persistence where relevant. Run the complete regression suite,
-build, deploy on port 8080 and smoke-test the deployed application. Do not run
-Docker network-changing operations concurrently with browser tests. Audit all rows
-against implementation and test evidence before marking this expansion complete.
+## Verification
 
-## Current evidence
+- `npm test`: 399 passing unit tests.
+- `.venv/bin/python -m pytest backend/tests -q`: 41 passing API tests.
+- `npm run build` and `npm run test:e2e:types`: pass.
+- `npx playwright test --reporter=list`: 254 passing browser tests.
+- Subsequent audit corrections passed 38 targeted browser cases covering protected
+  trades, portfolio journals/checkpoints, Live, and the practice workspace. The
+  final portfolio capital correction passed all six portfolio journeys again.
+- Regression coverage includes unique portfolio trade IDs, isolated journal notes,
+  individual staged-level editing, and preventing same-candle closing gains from
+  funding another ticker's earlier pending fill.
 
-Initial multiple-target implementation: 356 unit tests passed; production build passed; desktop and iPhone `advanced-trading.spec.ts` scale-out/reload journey passed. Full release and remaining feature rows are not yet complete.
+One initial full-suite failure assumed a permanently fixed provider candle count.
+The Live test feed legitimately advances; the assertion now derives expected
+execution prices and P&L from the returned dataset. The full rerun passed.
 
-Protection implementation uses completed-close trailing updates and a 14-period simple mean of true range (15 observed candles), with no ATR stop until warm-up. Break-even is entry price before costs. Remaining work includes saved-server/Live coverage, strategy builder exposure, stricter imported-state validation, and full regression verification.
+## Execution conventions
 
-Latest checks: 359 unit tests pass; build and E2E TypeScript checks pass. Both added browser journeys pass on desktop and iPhone (four cases total). These checks do not establish completion of the full eleven-feature scope.
+Trailing rules update at completed parent closes. ATR uses 14 true ranges and
+waits for warm-up; break-even means entry price before costs. Finer windows must
+reconcile OHLCV or use the reported conservative fallback; late data never
+retroactively re-executes a parent candle. Portfolio instruments use one currency
+and interval; same-timestamp fills compete in ticker order using preceding marks
+for other instruments. Live portfolio execution can wait for a lagging provider
+stream. Gap and adjusted-history checks cover all traded portfolio tickers.
 
-Alerts evidence: six desktop/iPhone journeys pass for local/server pause and history persistence, rearm, indicator rules and template loading. Shared rule evaluator, causal seek stopping and completed-bar Live evaluation have unit coverage. Checkpoints now include alert definitions/history.
+## Release
 
-Background evidence: backend restart/recovery/stop test passes; desktop/iPhone journeys close the browser, expire its lease, advance provider data, observe a persisted alert, reconnect and stop the monitor. Opt-in metadata and original pending-command eligibility survive restart.
-
-Data-library evidence: six API tests cover persisted import/read/delete and malformed timestamp/OHLCV rejection. Desktop and iPhone journeys upload a CSV, inspect a known gap, reload, start replay, reject invalid prices and delete the library entry. Imported data has an explicit CSV source label.
-
-Execution phase evidence: 375 unit tests pass; engine cases cover spread, elapsed-time short borrowing, shared volume budgets, queued market remainders and partial protective stops. Defaults preserve existing execution. Finer-candle execution, financing attribution to trade episodes and final execution audit remain.
-
-Finer execution reconciles parent OHLCV, preserves actual fill timestamps alongside base-chart labels, and counts unmatched conservative fallbacks. Browser/server replay uses an optional fetched or library dataset. Unit and desktop/iPhone tests prove target-before-stop ordering and reload persistence. Strategy integration and financing attribution are complete; the finer-execution Live audit remains open.
-
-Strategy integration evidence: finer-candle strategy execution, staged exits and trailing controls pass the desktop/iPhone finer-execution journey. Borrowing is attributed to closed trade episodes and exported in the trade CSV. Targeted unit tests and the production build pass. Full regression and deployment remain outstanding.
-
-Portfolio foundation: one spendable cash ledger and aggregate gross-exposure checks across up to six same-currency instruments. Unit tests cover long/short positions, competing pending orders, separate volume budgets, protective exits, fees, borrow costs, corrupt bars, and stale quotes. Instrument histories retain their own P&L for analytics. This foundation is now connected to replay/Live/session/checkpoint controls; see the integration evidence below.
-
-Portfolio integration evidence: browser/server replay journeys pass on desktop and iPhone, including shared-capital rejection, simultaneous positions, price advancement, reload and liquidation. Unit tests cover checkpoint restoration, untrusted capital validation and staggered Live fetches. The integration suite also exercises comparison Live order queuing and background reconnection. Final complete-suite verification and deployment remain outstanding.
-
-Latest portfolio checks: 395 unit tests, 40 API tests, production build and E2E TypeScript checks pass. The combined portfolio/checkpoint/background suite passes all 12 cases. Extended portfolio journeys additionally verify shared-position checkpoint restoration and comparison trades in the journal/performance view on desktop and iPhone (six cases pass). This is not a full regression or release claim.
+Code and browser verification are complete. Deployment and production smoke checks
+are recorded separately when the release is installed on port 8080.

@@ -247,6 +247,9 @@ export default function App() {
   );
   const liveStreams = [
     { ticker: market.ticker, interval: market.interval },
+    ...(session.finerMarket
+      ? [{ ticker: market.ticker, interval: session.finerMarket.interval }]
+      : []),
     ...(session.portfolio?.markets.map((m) => ({
       ticker: m.ticker,
       interval: m.interval,
@@ -759,6 +762,7 @@ export default function App() {
   function tradingCommand(command: {
     type: string;
     id?: string;
+    price?: number;
     stopLoss?: number;
     takeProfit?: number;
   }) {
@@ -1114,13 +1118,18 @@ export default function App() {
               }}
             />
           )}
-          {!blind && !live.active && (
+          {!blind && (
             <FinerExecution
               session={session}
               onChange={async (finer) => {
                 setPlaying(false);
                 if (finer) validateFiner(session.market, finer);
-                if (library.record)
+                if (live.active)
+                  await live.command({
+                    type: 'finer-data',
+                    market: finer ?? null,
+                  });
+                else if (library.record)
                   await library.command({
                     type: 'finer-data',
                     market: finer ?? null,
@@ -1700,9 +1709,13 @@ export default function App() {
                   }}
                 />
                 <MarketChart
-                  onProtectionEdit={(stopLoss, takeProfit) => {
+                  onProtectionEdit={(stopLoss, takeProfit, id, price) => {
                     try {
-                      tradingCommand({ type: 'bracket', stopLoss, takeProfit });
+                      tradingCommand(
+                        id
+                          ? { type: 'protection-level', id, price }
+                          : { type: 'bracket', stopLoss, takeProfit },
+                      );
                     } catch (error) {
                       setNotice({
                         text: (error as Error).message,

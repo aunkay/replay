@@ -67,7 +67,12 @@ interface MarketChartProps {
   comparisons: ChartComparison[];
   display: NormalizationContext;
   chartType: 'candles' | 'line';
-  onProtectionEdit?: (stop?: number, target?: number) => void;
+  onProtectionEdit?: (
+    stop?: number,
+    target?: number,
+    id?: string,
+    price?: number,
+  ) => void;
   blind?: boolean;
   syncGroup?: string;
   syncCrosshair?: boolean;

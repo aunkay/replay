@@ -32,18 +32,27 @@ test('full stack: market data loads through the API and trades reconcile to the 
     adjusted: true,
     currency: 'USD',
   });
-  expect(payload.bars).toHaveLength(60);
+  // Background Live journeys can append provider candles to the shared feed.
+  // Assert accounting against this response rather than assuming its old length.
+  expect(payload.bars.length).toBeGreaterThanOrEqual(60);
+  const cursor = Math.min(90, Math.floor(payload.bars.length * 0.3));
+  const entryClose = 100 + cursor * 2 + 1;
+  const exitClose = entryClose + 2;
+  expect(payload.bars[cursor].close).toBe(entryClose);
   await expect(page.getByText('YAHOO FINANCE', { exact: true })).toBeVisible();
-  // 60 candles start replay at index 18, with provider close 100 + 18*2 + 1.
-  await expect(page.locator('.instrument-price')).toContainText('$137.00');
+  await expect(page.locator('.instrument-price')).toContainText(
+    dollars(entryClose),
+  );
   await buy(page);
   await page.getByRole('button', { name: 'Next candle', exact: true }).click();
-  await expect(page.locator('.instrument-price')).toContainText('$139.00');
+  await expect(page.locator('.instrument-price')).toContainText(
+    dollars(exitClose),
+  );
   await page
     .getByRole('button', { name: 'Close position', exact: true })
     .click();
-  const entry = 137 * 1.0001;
-  const exit = 139 * 0.9999;
+  const entry = entryClose * 1.0001;
+  const exit = exitClose * 0.9999;
   const pnl = 10 * (exit - entry) - 10 * (entry + exit) * 0.0001;
   await expect(
     page
@@ -149,10 +158,13 @@ for (const [ticker, status, message] of [
       .click();
     const response = await responseEvent;
     expect(response.status()).toBe(status);
-    if (status === 429) expect(Number(response.headers()['retry-after'])).toBeGreaterThanOrEqual(30);
+    if (status === 429)
+      expect(Number(response.headers()['retry-after'])).toBeGreaterThanOrEqual(
+        30,
+      );
     await expect(page.getByRole('alert')).toContainText(message);
     expect(await savedSession(page)).toEqual(before);
-    if(status===429) await page.request.post('/api/test/reset-provider');
+    if (status === 429) await page.request.post('/api/test/reset-provider');
     await page.getByLabel('Ticker symbol', { exact: true }).fill('AAPL');
     await page
       .getByRole('button', { name: 'Load & start replay', exact: true })

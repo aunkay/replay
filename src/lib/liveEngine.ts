@@ -1,3 +1,4 @@
+import { advanceExecution } from './finerExecution';
 import {
   advancePortfolioSession,
   applyTradingCommand,
@@ -9,6 +10,7 @@ import {
   closePosition,
   createAccount,
   editBracket,
+  editProtectionLevel,
   submitOrder,
   withEquity,
   type EngineConfig,
@@ -24,6 +26,7 @@ export type LiveCommand = {
     ticker?: string;
     order?: OrderRequest;
     id?: string;
+    price?: number;
     stopLoss?: number;
     takeProfit?: number;
   };
@@ -49,7 +52,28 @@ export function applyLiveTick(
   queued: LiveCommand[],
   resumeAfter: number,
   comparisonMarkets: MarketData[] = [],
+  finerMarket?: MarketData,
 ) {
+  if (finerMarket && session.finerMarket) {
+    if (
+      finerMarket.ticker !== session.market.ticker ||
+      finerMarket.currency !== session.market.currency ||
+      finerMarket.adjusted !== session.market.adjusted ||
+      finerMarket.interval !== session.finerMarket.interval
+    )
+      throw new Error('Finer Live data identity changed.');
+    const merged = new Map(session.finerMarket.bars.map((b) => [b.time, b]));
+    for (const bar of finerMarket.bars) merged.set(bar.time, bar);
+    session = {
+      ...session,
+      finerMarket: {
+        ...finerMarket,
+        bars: [...merged.values()]
+          .sort((a, b) => a.time - b.time)
+          .slice(-100000),
+      },
+    };
+  }
   if (session.portfolio)
     return applyPortfolioLiveTick(
       session,
@@ -71,7 +95,12 @@ export function applyLiveTick(
       account = withEquity(account, bar);
       continue;
     }
-    account = advanceBar(account, bar);
+    account = advanceExecution(
+      account,
+      bar,
+      bars[bars.indexOf(bar) + 1]?.time,
+      session.finerMarket,
+    );
     const ready = pending.filter(
       (p) => p.submittedAt < (bar.endTime ?? bar.time),
     );
@@ -82,6 +111,8 @@ export function applyLiveTick(
         if (c.type === 'order') account = submitOrder(account, c.order!, bar);
         else if (c.type === 'close') account = closePosition(account, bar);
         else if (c.type === 'cancel') account = cancelOrder(account, c.id!);
+        else if (c.type === 'protection-level')
+          account = editProtectionLevel(account, c.id!, c.price!, bar);
         else if (c.type === 'bracket')
           account = editBracket(account, c.stopLoss, c.takeProfit, bar);
         else throw new Error('Unknown live command');

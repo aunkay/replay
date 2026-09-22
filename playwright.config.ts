@@ -43,6 +43,7 @@ export default defineConfig({
         '**/execution.spec.ts',
         '**/finer-execution.spec.ts',
         '**/portfolio.spec.ts',
+        '**/live-protection.spec.ts',
         '**/insecure-origin.spec.ts',
         '**/replay-follow.spec.ts',
         '**/comparison-price.spec.ts',

@@ -143,6 +143,36 @@ for (const server of [false, true])
       await expect(
         page.locator('.hub-journal-trade').filter({ hasText: 'PCOMP' }),
       ).toBeVisible();
+      const baseEntry = page
+        .locator('.hub-journal-trade')
+        .filter({ hasText: 'PBASE' });
+      const comparisonEntry = page
+        .locator('.hub-journal-trade')
+        .filter({ hasText: 'PCOMP' });
+      await baseEntry.locator('summary').click();
+      await baseEntry.getByLabel('Setup', { exact: true }).fill('Base setup');
+      await baseEntry
+        .getByRole('button', { name: 'Save notes', exact: true })
+        .click();
+      await expect(
+        page.getByRole('status').filter({ hasText: 'Notes saved.' }),
+      ).toBeVisible();
+      await comparisonEntry.locator('summary').click();
+      await expect(
+        comparisonEntry.getByLabel('Setup', { exact: true }),
+      ).toHaveValue('');
+      await comparisonEntry
+        .getByLabel('Setup', { exact: true })
+        .fill('Comparison setup');
+      await comparisonEntry
+        .getByRole('button', { name: 'Save notes', exact: true })
+        .click();
+      await expect(
+        page.getByRole('status').filter({ hasText: 'Notes saved.' }),
+      ).toBeVisible();
+      await expect(baseEntry.getByLabel('Setup', { exact: true })).toHaveValue(
+        'Base setup',
+      );
     }
     await page
       .getByRole('button', { name: 'Performance', exact: true })

@@ -153,6 +153,12 @@ export function isValidSession(value: unknown): value is StoredSession {
   if (value.portfolio !== undefined && !validPortfolio(value)) return false;
   const currentTime = value.market.bars[value.cursor].time;
   const account = value.account;
+  if (
+    account.orderNamespace !== undefined &&
+    (!nonemptyText(account.orderNamespace) ||
+      account.orderNamespace.length > 32)
+  )
+    return false;
   // This context is computed by the portfolio engine, never trusted from storage.
   if (account.capitalContext !== undefined) return false;
   if (!validDynamic(account.dynamicProtection)) return false;
@@ -377,6 +383,7 @@ function validPortfolio(session: RecordValue): boolean {
   const assets = book.assets as unknown[];
   const markets = [market, ...p.markets];
   const tickers = new Set<string>();
+  const orderIds = new Set<string>();
   for (const m of markets) {
     if (
       !isValidMarketData(m) ||
@@ -418,6 +425,10 @@ function validPortfolio(session: RecordValue): boolean {
       })
     )
       return false;
+    for (const order of (a.account as unknown as TradingState).orders) {
+      if (orderIds.has(order.id)) return false;
+      orderIds.add(order.id);
+    }
     if (
       m.ticker === market.ticker &&
       (at !== session.cursor ||

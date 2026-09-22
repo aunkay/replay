@@ -36,7 +36,12 @@ export default function BracketHandles({
   series: ISeriesApi<'Candlestick'> | ISeriesApi<'Line'>;
   orders: Order[];
   display: NormalizationContext;
-  onChange: (stop?: number, target?: number) => void;
+  onChange: (
+    stop?: number,
+    target?: number,
+    id?: string,
+    price?: number,
+  ) => void;
 }) {
   const [coordinates, setCoordinates] = useState<Record<string, number>>({}),
     [preview, setPreview] = useState<{
@@ -77,6 +82,8 @@ export default function BracketHandles({
     onChange(
       order.role === 'stopLoss' ? price : stop,
       order.role === 'takeProfit' ? price : target,
+      order.id,
+      price,
     );
   }
   return (

@@ -6,6 +6,7 @@ import {
   closePosition,
   createAccount,
   editBracket,
+  editProtectionLevel,
   submitOrder,
   withEquity,
   type Candle,
@@ -134,7 +135,19 @@ export function addPortfolioAsset(
   if (!ticker.trim()) throw new Error('Ticker is required.');
   if (bar.time > Math.max(...portfolio.assets.map((a) => a.bar.time)))
     throw new Error('Cannot add a ticker from the future.');
-  const account = advanceBar(createAccount(portfolio.config), bar);
+  let index = portfolio.assets.length + 1;
+  while (
+    portfolio.assets.some(
+      (a) =>
+        a.account.orderNamespace === `p${index}-` ||
+        a.account.orders.some((o) => o.id.startsWith(`p${index}-`)),
+    )
+  )
+    index++;
+  const account = {
+    ...advanceBar(createAccount(portfolio.config), bar),
+    orderNamespace: `p${index}-`,
+  };
   return markPortfolio({
     ...portfolio,
     assets: [...portfolio.assets, { ticker, currency, bar, account }],
@@ -145,6 +158,7 @@ function applyToAsset(
   portfolio: Portfolio,
   ticker: string,
   operation: (account: TradingState, bar: Candle) => TradingState,
+  marks?: Map<string, number>,
 ): Portfolio {
   const asset = portfolio.assets.find((a) => a.ticker === ticker);
   if (!asset) throw new Error('Ticker is not in this portfolio.');
@@ -152,8 +166,9 @@ function applyToAsset(
     exposure = 0;
   for (const other of portfolio.assets)
     if (other.ticker !== ticker) {
-      marketValue += other.account.position.quantity * other.bar.close;
-      exposure += Math.abs(other.account.position.quantity) * other.bar.close;
+      const price = marks?.get(other.ticker) ?? other.bar.close;
+      marketValue += other.account.position.quantity * price;
+      exposure += Math.abs(other.account.position.quantity) * price;
     }
   const result = operation(
     {
@@ -249,15 +264,30 @@ export function advancePortfolio(
     (a, b) => a.bar.time - b.bar.time || a.ticker.localeCompare(b.ticker),
   );
   const clock = Math.max(...portfolio.assets.map((a) => a.bar.time));
+  let groupTime: number | undefined;
+  let marks = new Map<string, number>();
   for (const update of sorted) {
     assertBar(update.bar);
     const asset = next.assets.find((a) => a.ticker === update.ticker);
     if (!asset) throw new Error('Ticker is not in this portfolio.');
     if (update.bar.time <= asset.bar.time || update.bar.time < clock) continue;
-    next = applyToAsset(next, update.ticker, (account) =>
-      update.markOnly
-        ? withEquity(account, update.bar)
-        : advanceExecution(account, update.bar, update.nextTime, update.finer),
+    if (groupTime !== update.bar.time) {
+      groupTime = update.bar.time;
+      marks = new Map(next.assets.map((a) => [a.ticker, a.bar.close]));
+    }
+    next = applyToAsset(
+      next,
+      update.ticker,
+      (account) =>
+        update.markOnly
+          ? withEquity(account, update.bar)
+          : advanceExecution(
+              account,
+              update.bar,
+              update.nextTime,
+              update.finer,
+            ),
+      marks,
     );
     next = {
       ...next,
@@ -279,5 +309,17 @@ export function editPortfolioBracket(
   assertCurrentQuote(portfolio, ticker);
   return applyToAsset(portfolio, ticker, (account, bar) =>
     editBracket(account, stopLoss, takeProfit, bar),
+  );
+}
+
+export function editPortfolioProtectionLevel(
+  portfolio: Portfolio,
+  ticker: string,
+  id: string,
+  price: number,
+): Portfolio {
+  assertCurrentQuote(portfolio, ticker);
+  return applyToAsset(portfolio, ticker, (account, bar) =>
+    editProtectionLevel(account, id, price, bar),
   );
 }

@@ -317,3 +317,40 @@ it('ATR trailing waits for causal warm-up and uses a 14 true-range mean', () => 
   s = advanceBar(s, bar(15, 100, 101, 99, 100));
   expect(s.orders.find((o) => o.role === 'stopLoss')?.price).toBe(96);
 });
+
+it('editing an individual protection level preserves every staged exit and allocation', async () => {
+  const { editProtectionLevel } = await import('./engine');
+  let s = submitOrder(
+    createAccount(config),
+    {
+      side: 'buy',
+      type: 'market',
+      quantity: 10,
+      stopLoss: 90,
+      takeProfits: [
+        { price: 105, percent: 30 },
+        { price: 110, percent: 30 },
+        { price: 115, percent: 40 },
+      ],
+    },
+    bar(1),
+  );
+  const targets = s.orders.filter((o) => o.role === 'takeProfit');
+  const stop = s.orders.find((o) => o.role === 'stopLoss')!;
+  s = editProtectionLevel(s, stop.id, 95, bar(1));
+  expect(s.orders.filter((o) => o.role === 'takeProfit')).toEqual(targets);
+  s = editProtectionLevel(s, targets[1].id, 111, bar(1));
+  expect(
+    s.orders
+      .filter((o) => o.status === 'pending')
+      .map((o) => [o.price, o.quantity]),
+  ).toEqual([
+    [95, 10],
+    [105, 3],
+    [111, 3],
+    [115, 4],
+  ]);
+  expect(() => editProtectionLevel(s, stop.id, NaN, bar(1))).toThrow(
+    'positive',
+  );
+});

@@ -103,3 +103,42 @@ it('strategy entries protect the first finer candle and preserve target-before-s
   expect(result.metrics.totalPnl).toBe(70);
   expect(result.account.executionCoverage?.fine).toBe(1);
 });
+it('Live uses reconciled finer fills and never applies the same candle twice', async () => {
+  const { initializeLive, applyLiveTick } = await import('./liveEngine');
+  const market = {
+    ...base,
+    bars: base.bars.map((b) => ({ ...b, complete: true })),
+  };
+  const initialized = initializeLive(
+    { ...market, bars: market.bars.slice(0, 1) },
+    { initialCapital: 10000, commissionBps: 0, slippageBps: 0 },
+  );
+  const state = {
+    ...initialized,
+    finerMarket: fine,
+    account: submitOrder(
+      initialized.account,
+      {
+        side: 'buy',
+        type: 'market',
+        quantity: 10,
+        stopLoss: 95,
+        takeProfit: 107,
+      },
+      market.bars[0],
+    ),
+  };
+  const result = applyLiveTick(state, market, [], 0, [], {
+    ...fine,
+    bars: small.map((b) => ({ ...b, complete: true })),
+  });
+  expect(result.session.account.cash).toBe(10070);
+  expect(result.session.account.executionCoverage).toEqual({
+    fine: 1,
+    fallback: 0,
+  });
+  expect(isValidSession(result.session)).toBe(true);
+  expect(applyLiveTick(result.session, market, [], 0).session.account).toEqual(
+    result.session.account,
+  );
+});

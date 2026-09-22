@@ -240,3 +240,37 @@ it('supports six instruments with one capital limit and rejects a seventh', () =
     'six tickers',
   );
 });
+
+it('assigns distinct order and journal identifiers across instruments', () => {
+  let p = portfolio();
+  for (const asset of p.assets)
+    p = submitPortfolioOrder(p, asset.ticker, {
+      side: 'buy',
+      type: 'market',
+      quantity: 1,
+      stopLoss: 95,
+      takeProfit: 105,
+    });
+  const ids = p.assets.flatMap((a) => a.account.orders.map((o) => o.id));
+  expect(new Set(ids).size).toBe(ids.length);
+});
+
+it("does not use another ticker's same-candle closing profit to fund a pending entry", () => {
+  let p = submitPortfolioOrder(portfolio(), 'AAA', {
+    side: 'sell',
+    type: 'market',
+    quantity: 5,
+  });
+  p = submitPortfolioOrder(p, 'BBB', {
+    side: 'buy',
+    type: 'limit',
+    price: 100,
+    quantity: 8,
+  });
+  p = advancePortfolio(p, [
+    { ticker: 'AAA', bar: bar(2, 50) },
+    { ticker: 'BBB', bar: bar(2, 100) },
+  ]);
+  expect(p.assets[1].account.position.quantity).toBe(0);
+  expect(p.assets[1].account.orders.at(-1)?.status).toBe('rejected');
+});

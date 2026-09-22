@@ -3,6 +3,7 @@ import {
   cancelOrder,
   closePosition,
   editBracket,
+  editProtectionLevel,
   submitOrder,
   type OrderRequest,
 } from './engine';
@@ -13,6 +14,7 @@ import {
   closePortfolioPosition,
   createPortfolio,
   editPortfolioBracket,
+  editPortfolioProtectionLevel,
   submitPortfolioOrder,
   type Portfolio,
 } from './portfolio';
@@ -24,6 +26,7 @@ export type TradingCommand = {
   ticker?: string;
   order?: OrderRequest;
   id?: string;
+  price?: number;
   stopLoss?: number;
   takeProfit?: number;
 };
@@ -95,6 +98,13 @@ export function applyTradingCommand(
       book = closePortfolioPosition(book, ticker);
     else if (command.type === 'cancel')
       book = cancelPortfolioOrder(book, ticker, command.id!);
+    else if (command.type === 'protection-level')
+      book = editPortfolioProtectionLevel(
+        book,
+        ticker,
+        command.id!,
+        command.price!,
+      );
     else if (command.type === 'bracket')
       book = editPortfolioBracket(
         book,
@@ -115,14 +125,21 @@ export function applyTradingCommand(
         ? closePosition(session.account, bar)
         : command.type === 'cancel'
           ? cancelOrder(session.account, command.id!)
-          : command.type === 'bracket'
-            ? editBracket(
+          : command.type === 'protection-level'
+            ? editProtectionLevel(
                 session.account,
-                command.stopLoss,
-                command.takeProfit,
+                command.id!,
+                command.price!,
                 bar,
               )
-            : undefined;
+            : command.type === 'bracket'
+              ? editBracket(
+                  session.account,
+                  command.stopLoss,
+                  command.takeProfit,
+                  bar,
+                )
+              : undefined;
   if (!account) throw new Error('Unknown trading command.');
   return { ...session, account };
 }

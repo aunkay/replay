@@ -156,6 +156,7 @@ if (!isMainThread) {
             body.pending,
             body.resumeAfter,
             body.comparisonMarkets,
+            body.finerMarket,
           ),
         );
       if (request.url === '/validate-live-command') {
@@ -180,7 +181,11 @@ if (!isMainThread) {
           next = applyCheckpoint(session, command);
         } else if (command.type === 'portfolio-add')
           next = attachPortfolioMarket(session, command.market);
-        else if (['order', 'cancel', 'close', 'bracket'].includes(command.type))
+        else if (
+          ['order', 'cancel', 'close', 'bracket', 'protection-level'].includes(
+            command.type,
+          )
+        )
           next = applyTradingCommand(session, command);
         else if (command.type === 'advance') {
           next = advanceReplay(session, command.target ?? session.cursor + 1);
