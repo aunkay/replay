@@ -49,8 +49,8 @@
   animation: watchlist-ticker var(--ticker-duration) linear infinite;
   will-change: transform;
 }
-.watchlist-banner:hover .watchlist-track,
-.watchlist-banner:focus-within .watchlist-track {
+.watchlist-viewport:focus-visible .watchlist-track,
+.watchlist-settings[open] ~ .watchlist-viewport .watchlist-track {
   animation-play-state: paused;
 }
 .watchlist-group {
@@ -189,8 +189,12 @@
   color: #ee9f9b;
 }
 @keyframes watchlist-ticker {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
   to {
-    transform: translateX(calc(-1 * var(--ticker-distance)));
+    /* Both copies have identical widths, including the gap at the seam. */
+    transform: translate3d(-50%, 0, 0);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -221,5 +225,11 @@
   }
   .watchlist-editor {
     padding: 12px;
+  }
+}
+
+@media (hover: hover) {
+  .watchlist-viewport:hover .watchlist-track {
+    animation-play-state: paused;
   }
 }

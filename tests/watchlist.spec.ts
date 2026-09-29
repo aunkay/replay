@@ -118,3 +118,91 @@ test('watchlist persists ten tickers, shows signed quotes, scrolls accessibly an
     path: test.info().outputPath('watchlist-banner.png'),
   });
 });
+
+test('ticker loops without a seam jump and quote refreshes preserve its scroll position', async ({
+  page,
+}) => {
+  const tickers = [
+    'MSFT',
+    'ASTS',
+    'RKLB',
+    'SPY',
+    'IWM',
+    'GLD',
+    'IBIT',
+    'SPCX',
+    'LUNR',
+    'BB',
+  ];
+  let price = 123.45;
+  await page.route('**/api/watchlist/heartbeat', (route) =>
+    route.fulfill({
+      json: {
+        tickers,
+        interval: 60,
+        enabled: true,
+        monitoring: true,
+        provider: { retryAt: null },
+        quotes: tickers.map((ticker) => ({
+          ticker,
+          price,
+          changePct: 1.23,
+          currency: 'USD',
+          stale: false,
+        })),
+      },
+    }),
+  );
+  await page.goto('/');
+  const track = page.locator('.watchlist-track');
+  await expect(track).toHaveClass(/is-scrolling/);
+  await page.getByRole('button', { name: 'Stop watchlist animation' }).click();
+  await page.getByRole('button', { name: 'Start watchlist animation' }).click();
+  await page.mouse.move(0, 500);
+  await expect(track).toHaveCSS('animation-play-state', 'running');
+  const started = await track.evaluate((e) =>
+    Number(e.getAnimations()[0].currentTime),
+  );
+  await expect
+    .poll(() => track.evaluate((e) => Number(e.getAnimations()[0].currentTime)))
+    .toBeGreaterThan(started + 50);
+  const seam = await track.evaluate((e) => {
+    const animation = e.getAnimations()[0];
+    animation.pause();
+    const duration = Number(animation.effect!.getTiming().duration);
+    animation.currentTime = duration - 0.5;
+    const before =
+      e.children[1].firstElementChild!.getBoundingClientRect().left;
+    animation.currentTime = duration + 0.5;
+    const after = e.children[0].firstElementChild!.getBoundingClientRect().left;
+    animation.currentTime = duration * 0.7;
+    const offset = new DOMMatrix(getComputedStyle(e).transform).m41;
+    return { before, after, offset, duration };
+  });
+  // Crossing the seam advances by just 1 ms of normal motion (35 px/sec).
+  expect(Math.abs(seam.after - seam.before + 0.035)).toBeLessThan(0.12);
+  price = 12345678.9;
+  await page.evaluate(() =>
+    document.dispatchEvent(new Event('visibilitychange')),
+  );
+  await expect(track.locator('[role=list] [data-ticker=MSFT]')).toContainText(
+    '12,345,678.90',
+  );
+  await expect
+    .poll(() =>
+      track.evaluate((e) =>
+        Number(e.getAnimations()[0].effect!.getTiming().duration),
+      ),
+    )
+    .toBeGreaterThan(seam.duration);
+  const updated = await track.evaluate(
+    (e) => new DOMMatrix(getComputedStyle(e).transform).m41,
+  );
+  expect(Math.abs(updated - seam.offset)).toBeLessThan(0.2);
+  const widths = await track
+    .locator('.watchlist-group')
+    .evaluateAll((groups) =>
+      groups.map((g) => g.getBoundingClientRect().width),
+    );
+  expect(Math.abs(widths[0] - widths[1])).toBeLessThan(0.02);
+});

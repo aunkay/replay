@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 import './WatchlistBanner.css';
 type Quote = {
   ticker: string;
@@ -60,7 +66,9 @@ export default function WatchlistBanner() {
     }
   });
   const viewport = useRef<HTMLDivElement>(null),
-    group = useRef<HTMLDivElement>(null);
+    group = useRef<HTMLDivElement>(null),
+    track = useRef<HTMLDivElement>(null);
+  const previousDistance = useRef(0);
   const [distance, setDistance] = useState(0);
   useEffect(() => {
     let alive = true,
@@ -95,13 +103,14 @@ export default function WatchlistBanner() {
       document.removeEventListener('visibilitychange', refresh);
     };
   }, []);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!viewport.current || !group.current) return;
     const measure = () =>
       setDistance(
         data?.tickers.length &&
-          group.current!.scrollWidth > viewport.current!.clientWidth + 1
-          ? group.current!.scrollWidth
+          group.current!.getBoundingClientRect().width >
+            viewport.current!.clientWidth + 1
+          ? group.current!.getBoundingClientRect().width
           : 0,
       );
     const observer = new ResizeObserver(measure);
@@ -110,6 +119,22 @@ export default function WatchlistBanner() {
     measure();
     return () => observer.disconnect();
   }, [data?.tickers.length]);
+  useLayoutEffect(() => {
+    const animation = track.current?.getAnimations()[0];
+    const previous = previousDistance.current;
+    if (animation && distance > 0 && previous > 0 && !paused) {
+      // Changing CSS duration must not move the quote under the user's eyes.
+      // currentTime survives a duration update; convert its old loop position
+      // back to pixels, then place it at the same offset in the new loop.
+      const elapsed = Number(animation.currentTime ?? 0);
+      const oldDuration = (previous / 35) * 1000;
+      const offset = ((elapsed % oldDuration) / oldDuration) * previous;
+      animation.currentTime = ((offset % distance) / 35) * 1000;
+    }
+    previousDistance.current = paused ? 0 : distance;
+    if (!paused && viewport.current) viewport.current.scrollLeft = 0;
+  }, [distance, paused]);
+
   useEffect(() => {
     if (open && data && !draftInitialized.current) {
       draftInitialized.current = true;
@@ -363,11 +388,11 @@ export default function WatchlistBanner() {
         aria-label="Watchlist quotes, scroll horizontally when animation is stopped"
       >
         <div
+          ref={track}
           className={`watchlist-track ${distance && !paused ? 'is-scrolling' : ''}`}
           style={
             {
-              '--ticker-distance': `${distance}px`,
-              '--ticker-duration': `${Math.max(18, distance / 35)}s`,
+              '--ticker-duration': `${Math.max(0.1, distance / 35)}s`,
             } as CSSProperties
           }
         >
