@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { IChartApi, ISeriesApi, UTCTimestamp } from 'lightweight-charts';
 import type { Candle } from '../lib/engine';
 import {
@@ -26,6 +26,43 @@ export default function VolumeProfile({
   storageKey: string;
   blind: boolean;
 }) {
+  const menuRef = useRef<HTMLDetailsElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  useLayoutEffect(() => {
+    const menu = menuRef.current;
+    const container = menu?.parentElement;
+    if (!menuOpen || !menu || !container) return;
+    const fit = () => {
+      const viewport = window.visualViewport;
+      let bottom = viewport
+        ? viewport.offsetTop + viewport.height
+        : innerHeight;
+      const dock = document.querySelector('.mobile-workspace-nav');
+      if (dock && getComputedStyle(dock).display !== 'none') {
+        bottom = Math.min(bottom, dock.getBoundingClientRect().top);
+      }
+      const top = menu.getBoundingClientRect().top;
+      const available =
+        Math.min(container.getBoundingClientRect().bottom - 12, bottom - 8) -
+        top;
+      menu.style.maxHeight = `${Math.max(88, available)}px`;
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(container);
+    window.addEventListener('resize', fit);
+    window.addEventListener('scroll', fit, true);
+    window.visualViewport?.addEventListener('resize', fit);
+    window.visualViewport?.addEventListener('scroll', fit);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', fit);
+      window.removeEventListener('scroll', fit, true);
+      window.visualViewport?.removeEventListener('resize', fit);
+      window.visualViewport?.removeEventListener('scroll', fit);
+      menu.style.maxHeight = '';
+    };
+  }, [menuOpen]);
   const [settings, setSettings] = useState(() => restoreProfile(storageKey));
   const [saved, setSaved] = useState(true);
   const [info, setInfo] = useState('');
@@ -126,7 +163,11 @@ export default function VolumeProfile({
     n.toLocaleString('en-US', { maximumFractionDigits: 6 });
   return (
     <>
-      <details className="volume-profile-menu">
+      <details
+        className="volume-profile-menu"
+        ref={menuRef}
+        onToggle={(event) => setMenuOpen(event.currentTarget.open)}
+      >
         <summary>Volume profile{settings.mode !== 'off' ? ' •' : ''}</summary>
         <div
           className="volume-profile-controls"

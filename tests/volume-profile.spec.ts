@@ -168,3 +168,55 @@ test('visible-range profile recomputes when the chart zooms', async ({
     .poll(async () => Number(await profile.getAttribute('data-profile-volume')))
     .toBeLessThan(before);
 });
+
+test('profile settings stay within the chart and the bottom controls remain reachable', async ({
+  page,
+  isMobile,
+}) => {
+  if (!isMobile) await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+  const chart = page.locator('.market-chart').first();
+  const menu = chart.locator('.volume-profile-menu');
+  const controls = menu.getByRole('group', { name: 'Volume profile settings' });
+  await menu.locator('summary').click();
+  await page
+    .getByLabel('Profile range', { exact: true })
+    .selectOption('recent');
+  for (const height of isMobile ? [844, 664] : [800, 700]) {
+    await page.setViewportSize({ width: isMobile ? 390 : 1280, height });
+    await expect
+      .poll(async () => {
+        const area = (await chart.boundingBox())!;
+        const panel = (await controls.boundingBox())!;
+        return (
+          panel.y + panel.height <= area.y + area.height - 10 &&
+          panel.x >= area.x &&
+          panel.x + panel.width <= area.x + area.width
+        );
+      })
+      .toBe(true);
+    const reset = menu.getByRole('button', { name: 'Reset volume profile' });
+    await reset.scrollIntoViewIfNeeded();
+    await expect(reset).toBeInViewport();
+    expect(await controls.evaluate((e) => e.scrollTop)).toBeGreaterThan(0);
+    expect(
+      await reset.evaluate((e) => {
+        const r = e.getBoundingClientRect();
+        return e.contains(
+          document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2),
+        );
+      }),
+    ).toBe(true);
+  }
+  const inspect = menu.getByLabel('Inspect profile bars (hover or tap)');
+  await inspect.check();
+  await expect(inspect).toBeChecked();
+  const reset = menu.getByRole('button', { name: 'Reset volume profile' });
+  if (isMobile) await reset.tap();
+  else await reset.click();
+  await expect(page.getByLabel('Profile range', { exact: true })).toHaveValue(
+    'off',
+  );
+  await menu.locator('summary').click();
+  await expect(controls).toBeHidden();
+});

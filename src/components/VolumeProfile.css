@@ -13,19 +13,26 @@
   color: #dbe4ee;
   border: 1px solid #465169;
   border-radius: 6px;
-  min-height: 36px;
+  height: 44px;
+  min-height: 44px;
   box-sizing: border-box;
 }
 .volume-profile-menu[open] {
   width: 300px;
+  bottom: 12px;
 }
 .volume-profile-controls {
+  /* Explicit offsets avoid percentage heights in the details content box. */
+  position: absolute;
+  top: 44px;
+  bottom: 0;
+  width: 100%;
+  box-sizing: border-box;
   padding: 12px;
   background: #141c29;
   color: #dbe4ee;
   border: 1px solid #465169;
   border-radius: 6px;
-  max-height: min(440px, 50vh);
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -104,10 +111,7 @@
     min-height: 44px;
   }
 }
-.volume-profile-menu[open] {
-  height: calc(100% - 52px);
-}
-.volume-profile-controls {
-  box-sizing: border-box;
-  max-height: calc(100% - 44px);
+/* Keep focused controls above the fixed phone dock when scrolling into view. */
+.volume-profile-controls :is(button, input, select) {
+  scroll-margin-block: 16px calc(var(--mobile-dock-height, 0px) + 16px);
 }
