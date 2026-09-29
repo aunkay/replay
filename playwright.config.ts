@@ -31,6 +31,7 @@ export default defineConfig({
       testMatch: [
         '**/iphone.spec.ts',
         '**/volume.spec.ts',
+        '**/volume-profile.spec.ts',
         '**/practice.spec.ts',
         '**/advanced-trading.spec.ts',
         '**/checkpoints.spec.ts',

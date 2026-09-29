@@ -1745,6 +1745,8 @@ export default function App() {
                   }}
                 />
                 <MarketChart
+                  profileTimezone={market.exchangeTimezone}
+                  profileInterval={market.interval}
                   onProtectionEdit={(stopLoss, takeProfit, id, price) => {
                     try {
                       tradingCommand(

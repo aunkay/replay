@@ -187,3 +187,17 @@ Live notifications run on the server. Enable **Background monitoring** to contin
 Credentials are stored in the server’s SQLite database, never returned to the browser or included in session exports. They are not encrypted at rest; protect the server volume and its backups. Settings are shared by this single-user server. Disconnect removes the saved token and cancels pending deliveries. Changing the bot or destination also cancels pending messages; an already in-flight request may finish.
 
 A persistent outbox deduplicates alert events and retries temporary errors with exponential backoff, honoring Telegram’s `retry_after`. After eight failed attempts, delivery is marked failed. Use **Refresh delivery status** to inspect the latest queued alert. Telegram does not offer an idempotency key for `sendMessage`, so a timeout or server crash after Telegram accepts a message can still cause a duplicate on retry. Test messages are sent only when you click the test button. Automated tests use a fake Telegram transport and never send real messages.
+
+## Volume profiles
+
+Use **Volume profile** inside each chart to enable horizontal volume-by-price bars:
+
+- **Visible range** recalculates as you pan or zoom; **Recent candles** uses a configurable lookback.
+- **Latest session** displays one profile beside the price scale; **Session profiles** displays up to eight profiles across their session ranges. Session modes require an intraday interval. Grouping uses exchange-local dates (UTC when unavailable) and a configurable start hour for overnight sessions. Regular, pre-market, and after-hours filters use the dataset’s session tags.
+- Choose total volume, stacked up/down volume, or candle-direction delta. Adjust left/right placement, width, opacity, and 8–100 price rows.
+- Toggle the point of control (**POC**, the highest-volume row), value-area high/low (**VAH/VAL**), and value-area highlighting. The default value area is 70%; rows expand around POC until the requested volume share is covered.
+- Enable **Inspect profile bars** to hover or tap a row for its price range, total volume, up/down volume, and direction delta. Leave inspection off for uninterrupted chart gestures.
+
+Profiles use only revealed, completed candles and update during replay and Live monitoring. Settings are saved separately for each chart pane. Price coordinates stay aligned with linear/log scales and normalization views. A session may be partial when loaded history begins mid-session or replay has not reached its close.
+
+These profiles estimate volume distribution uniformly across each source candle’s high–low range. Flat candles put their volume into one row. Candle direction supplies up/down classification; delta is **not actual bid/ask or aggressor order flow**. Yahoo OHLCV data cannot reproduce TradingView’s lower-timeframe/tick-based distribution exactly. Load finer candles (such as 1m) when you need more detail; missing or zero-volume data cannot produce a profile.

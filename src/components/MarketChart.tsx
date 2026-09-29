@@ -1,3 +1,4 @@
+import VolumeProfile from './VolumeProfile';
 import { useEffect, useRef, useState } from 'react';
 import {
   CandlestickSeries,
@@ -59,6 +60,9 @@ export type ChartComparison = {
 };
 
 interface MarketChartProps {
+  profileKey?: string;
+  profileTimezone?: string;
+  profileInterval?: string;
   bars: Candle[];
   orders: Order[];
   position: { quantity: number; averagePrice: number };
@@ -372,6 +376,9 @@ function IndicatorLegends({
 }
 
 export default function MarketChart({
+  profileKey = 'main',
+  profileTimezone = 'UTC',
+  profileInterval = '1d',
   bars,
   orders,
   position,
@@ -1340,6 +1347,18 @@ export default function MarketChart({
         aria-label="Interactive historical price chart with executed trade markers"
         style={{ position: 'absolute', inset: 0 }}
       />
+      {ready && (
+        <VolumeProfile
+          key={profileKey}
+          storageKey={`replay-volume-profile:${profileKey}`}
+          chart={ready.chart}
+          series={chartType === 'candles' ? ready.candles : ready.line}
+          bars={bars}
+          timezone={profileTimezone}
+          interval={profileInterval}
+          blind={blind}
+        />
+      )}
       <button
         type="button"
         className="chart-follow-latest"

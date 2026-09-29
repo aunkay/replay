@@ -378,6 +378,9 @@ export default function AnalysisPanel({
       />
       {bars.length ? (
         <MarketChart
+          profileKey={settings.id}
+          profileTimezone={market?.exchangeTimezone}
+          profileInterval={settings.interval}
           bars={bars}
           orders={
             settings.ticker === session.market.ticker

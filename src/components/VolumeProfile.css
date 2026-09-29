@@ -1,0 +1,113 @@
+.volume-profile-menu {
+  position: absolute;
+  top: 40px;
+  left: 8px;
+  z-index: 9;
+  font-size: 12px;
+  max-width: calc(100% - 90px);
+}
+.volume-profile-menu summary {
+  cursor: pointer;
+  padding: 8px 10px;
+  background: #1b2330;
+  color: #dbe4ee;
+  border: 1px solid #465169;
+  border-radius: 6px;
+  min-height: 36px;
+  box-sizing: border-box;
+}
+.volume-profile-menu[open] {
+  width: 300px;
+}
+.volume-profile-controls {
+  padding: 12px;
+  background: #141c29;
+  color: #dbe4ee;
+  border: 1px solid #465169;
+  border-radius: 6px;
+  max-height: min(440px, 50vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.volume-profile-controls label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 9px 0;
+  min-height: 32px;
+}
+.volume-profile-controls select,
+.volume-profile-controls input[type='number'] {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  background: #222e3f;
+  color: #eef3fa;
+  border: 1px solid #526178;
+  border-radius: 4px;
+}
+.volume-profile-controls input[type='range'] {
+  width: 100%;
+}
+.volume-profile-controls p {
+  line-height: 1.5;
+  color: #afbdd0;
+}
+.volume-profile-controls button {
+  min-height: 44px;
+}
+.volume-profile-layer {
+  position: absolute;
+  top: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+.volume-profile-layer text {
+  font-size: 10px;
+  paint-order: stroke;
+  stroke: #101722;
+  stroke-width: 3px;
+}
+.profile-hit {
+  pointer-events: all;
+  cursor: crosshair;
+}
+.profile-inspector,
+.profile-notice {
+  position: absolute;
+  left: 8px;
+  bottom: 35px;
+  z-index: 10;
+  max-width: calc(100% - 95px);
+  padding: 8px;
+  border-radius: 5px;
+  background: #182234ed;
+  color: #e2e9f4;
+  font-size: 12px;
+  pointer-events: none;
+}
+.profile-inspector button {
+  pointer-events: auto;
+  min-width: 44px;
+  min-height: 44px;
+}
+@media (max-width: 600px) {
+  .volume-profile-menu {
+    left: 8px;
+    max-width: calc(100% - 72px);
+  }
+  .volume-profile-menu summary,
+  .volume-profile-controls select,
+  .volume-profile-controls label {
+    min-height: 44px;
+  }
+}
+.volume-profile-menu[open] {
+  height: calc(100% - 52px);
+}
+.volume-profile-controls {
+  box-sizing: border-box;
+  max-height: calc(100% - 44px);
+}
