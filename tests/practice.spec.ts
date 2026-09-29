@@ -464,11 +464,11 @@ test('strategy catalog searches all templates, explains rules and compares histo
     .click();
   await page.getByRole('button', { name: 'Strategy lab', exact: true }).click();
   const templates = page.getByLabel('Strategy templates', { exact: true });
-  await expect(templates.getByRole('button')).toHaveCount(24);
+  await expect(templates.getByRole('button')).toHaveCount(25);
   await page
     .getByLabel('Strategy category', { exact: true })
     .selectOption('Volume');
-  await expect(templates.getByRole('button')).toHaveCount(2);
+  await expect(templates.getByRole('button')).toHaveCount(3);
   await page
     .getByRole('button', { name: 'Chaikin money flow trend', exact: true })
     .click();

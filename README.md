@@ -201,3 +201,7 @@ Use **Volume profile** inside each chart to enable horizontal volume-by-price ba
 Profiles use only revealed, completed candles and update during replay and Live monitoring. Settings are saved separately for each chart pane. Price coordinates stay aligned with linear/log scales and normalization views. A session may be partial when loaded history begins mid-session or replay has not reached its close.
 
 These profiles estimate volume distribution uniformly across each source candle’s high–low range. Flat candles put their volume into one row. Candle direction supplies up/down classification; delta is **not actual bid/ask or aggressor order flow**. Yahoo OHLCV data cannot reproduce TradingView’s lower-timeframe/tick-based distribution exactly. Load finer candles (such as 1m) when you need more detail; missing or zero-volume data cannot produce a profile.
+
+### Volume profile sweep & reclaim strategy
+
+In **Practice & research → Strategy lab**, select **Volume profile sweep & reclaim**. It waits for a prior-session VAL/VAH sweep, reclaim, and later retest before entering at the next open. Stops sit beyond the sweep extreme; configurable profit-taking uses POC and the opposite value edge. The builder includes editable confirmation/risk settings and a transparent quick-test table. This is an experimental hypothesis: the small initial SPY/QQQ study did not demonstrate profitability. See the [research, exact rules, SL/PT details and limitations](docs/volume-profile-strategy.md).

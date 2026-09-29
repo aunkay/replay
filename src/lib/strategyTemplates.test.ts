@@ -7,18 +7,24 @@ import { strategyPerformance } from './strategyPerformance';
 import type { EquityPoint } from './engine';
 const bars = createDemo().bars;
 describe('research catalog execution', () => {
-  it('contains 24 distinct rule sets', () => {
-    expect(STRATEGY_TEMPLATES).toHaveLength(24);
+  it('contains 25 distinct rule sets', () => {
+    expect(STRATEGY_TEMPLATES).toHaveLength(25);
     expect(
       new Set(
         STRATEGY_TEMPLATES.map((t) =>
           JSON.stringify([t.strategy.longEntry, t.strategy.longExit]),
         ),
       ).size,
-    ).toBe(24);
+    ).toBe(25);
   });
   for (const template of STRATEGY_TEMPLATES)
     it(`${template.name}: valid plots, causal results and affordable orders`, () => {
+      const bars = template.strategy.volumeProfile
+        ? createDemo().bars.map((b, i) => ({
+            ...b,
+            time: 1704205800 + Math.floor(i / 40) * 86400 + (i % 40) * 300,
+          }))
+        : createDemo().bars;
       validateStrategy(template.strategy);
       for (const rule of [
         template.strategy.longEntry,

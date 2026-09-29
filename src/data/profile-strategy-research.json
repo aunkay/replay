@@ -1,0 +1,186 @@
+{
+  "generatedAt": "2026-09-29T09:58:10.625Z",
+  "strategy": {
+    "version": 1,
+    "name": "Volume profile sweep & reclaim",
+    "longEntry": {
+      "join": "and",
+      "conditions": []
+    },
+    "shortEntry": {
+      "join": "and",
+      "conditions": []
+    },
+    "longExit": {
+      "join": "and",
+      "conditions": []
+    },
+    "shortExit": {
+      "join": "and",
+      "conditions": []
+    },
+    "quantity": 10,
+    "config": {
+      "initialCapital": 100000,
+      "commissionBps": 5,
+      "slippageBps": 5
+    },
+    "riskPct": 0.5,
+    "volumeProfile": {
+      "timezone": "America/New_York",
+      "startHour": 0,
+      "rows": 32,
+      "valueArea": 70,
+      "minSessionBars": 20,
+      "atrPeriod": 14,
+      "sweepAtr": 0.1,
+      "stopAtr": 0.2,
+      "retestAtr": 0.25,
+      "zoneFraction": 0.35,
+      "confirmationBars": 6,
+      "minRR": 1,
+      "maxHold": 24,
+      "direction": "both",
+      "target": "scale"
+    }
+  },
+  "method": "Fixed defaults, no parameter tuning. Recent one-month adjusted 5m Yahoo snapshots. Fresh $100,000 capital for each ticker/sample/cost scenario; 0.5% risk per trade with buying-power cap. First 70% / later 30% chronological split, prior bars for warmup only. 5 or 10 bps EACH of commission and slippage on EACH side. End-of-evaluation liquidation. Daily Sharpe, zero risk-free rate; bar-close drawdown. Too short for evidence of durable profitability; later sample is not an independent future test. OHLCV profile approximations, no true bid/ask flow. Same-bar protective-order conflicts use the engine conservative policy.",
+  "datasets": [
+    {
+      "ticker": "SPY",
+      "interval": "5m",
+      "source": "yfinance",
+      "adjusted": true,
+      "fetchedAt": "2026-09-29T09:49:00.855812+00:00",
+      "bars": 1560,
+      "first": 1788183000,
+      "last": 1790625300,
+      "sha256": "e87da011c404a5f9d03af288ca5e931f13903926e5f799d4204418539a185157"
+    },
+    {
+      "ticker": "QQQ",
+      "interval": "5m",
+      "source": "yfinance",
+      "adjusted": true,
+      "fetchedAt": "2026-09-29T09:49:04.235601+00:00",
+      "bars": 1560,
+      "first": 1788183000,
+      "last": 1790625300,
+      "sha256": "f3811c4e04af87e31dc75c05980a749b2957604828cbea7177be725dae63b4b4"
+    }
+  ],
+  "results": [
+    {
+      "ticker": "SPY",
+      "sample": "First 70%",
+      "costBps": 5,
+      "bars": 1091,
+      "from": 1788183300,
+      "to": 1789761300,
+      "pnl": -266.93721024478145,
+      "drawdownPct": 0.31280812375339373,
+      "sharpe": -4.2426406871192865,
+      "trades": 1,
+      "rejected": 0,
+      "conflicts": 0
+    },
+    {
+      "ticker": "SPY",
+      "sample": "First 70%",
+      "costBps": 10,
+      "bars": 1091,
+      "from": 1788183300,
+      "to": 1789761300,
+      "pnl": 0,
+      "drawdownPct": 0,
+      "sharpe": null,
+      "trades": 0,
+      "rejected": 0,
+      "conflicts": 0
+    },
+    {
+      "ticker": "SPY",
+      "sample": "Later 30%",
+      "costBps": 5,
+      "bars": 468,
+      "from": 1789997400,
+      "to": 1790625300,
+      "pnl": 0,
+      "drawdownPct": 0,
+      "sharpe": null,
+      "trades": 0,
+      "rejected": 0,
+      "conflicts": 0
+    },
+    {
+      "ticker": "SPY",
+      "sample": "Later 30%",
+      "costBps": 10,
+      "bars": 468,
+      "from": 1789997400,
+      "to": 1790625300,
+      "pnl": 0,
+      "drawdownPct": 0,
+      "sharpe": null,
+      "trades": 0,
+      "rejected": 0,
+      "conflicts": 0
+    },
+    {
+      "ticker": "QQQ",
+      "sample": "First 70%",
+      "costBps": 5,
+      "bars": 1091,
+      "from": 1788183300,
+      "to": 1789761300,
+      "pnl": 0,
+      "drawdownPct": 0,
+      "sharpe": null,
+      "trades": 0,
+      "rejected": 0,
+      "conflicts": 0
+    },
+    {
+      "ticker": "QQQ",
+      "sample": "First 70%",
+      "costBps": 10,
+      "bars": 1091,
+      "from": 1788183300,
+      "to": 1789761300,
+      "pnl": 0,
+      "drawdownPct": 0,
+      "sharpe": null,
+      "trades": 0,
+      "rejected": 0,
+      "conflicts": 0
+    },
+    {
+      "ticker": "QQQ",
+      "sample": "Later 30%",
+      "costBps": 5,
+      "bars": 468,
+      "from": 1789997400,
+      "to": 1790625300,
+      "pnl": 0,
+      "drawdownPct": 0,
+      "sharpe": null,
+      "trades": 0,
+      "rejected": 0,
+      "conflicts": 0
+    },
+    {
+      "ticker": "QQQ",
+      "sample": "Later 30%",
+      "costBps": 10,
+      "bars": 468,
+      "from": 1789997400,
+      "to": 1790625300,
+      "pnl": 0,
+      "drawdownPct": 0,
+      "sharpe": null,
+      "trades": 0,
+      "rejected": 0,
+      "conflicts": 0
+    }
+  ]
+}

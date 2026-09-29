@@ -1,3 +1,4 @@
+import ProfileStrategySettings from './ProfileStrategySettings';
 import StrategyProtection from './StrategyProtection';
 import ResearchResults from './ResearchResults';
 import { RULE_INTERVALS, type RuleInterval } from '../lib/timeframes';
@@ -402,7 +403,9 @@ export default function StrategyBuilder({
         <StrategyCatalog
           onChoose={(s) => {
             setStrategy(s);
-            setPath('allocationPct');
+            setPath(s.volumeProfile ? 'volumeProfile.minRR' : 'allocationPct');
+            setOptimize(false);
+            setAdditional([]);
           }}
         />
         <label>
@@ -417,7 +420,16 @@ export default function StrategyBuilder({
           defaultValue=""
           onChange={(e) => {
             const s = saved.find((s) => s.id === e.target.value);
-            if (s) setStrategy(s.strategy);
+            if (s) {
+              setStrategy(s.strategy);
+              setPath(
+                s.strategy.volumeProfile
+                  ? 'volumeProfile.minRR'
+                  : 'allocationPct',
+              );
+              setOptimize(false);
+              setAdditional([]);
+            }
           }}
         >
           <option value="">Load saved strategy</option>
@@ -431,17 +443,28 @@ export default function StrategyBuilder({
       <details className="hub-disclosure">
         <summary>2. Entry & exit rules</summary>
         <p>
-          Choose when to enter and exit. Empty rules do not generate a signal.
+          {strategy.volumeProfile
+            ? 'This template uses the multi-candle sequence below instead of simple indicator conditions.'
+            : 'Choose when to enter and exit. Empty rules do not generate a signal.'}
         </p>
-        {(['longEntry', 'shortEntry', 'longExit', 'shortExit'] as const).map(
-          (key) => (
-            <RuleEditor
-              key={key}
-              name={key.replace(/([A-Z])/g, ' $1')}
-              value={strategy[key]}
-              onChange={(v) => setStrategy({ ...strategy, [key]: v })}
-            />
-          ),
+        {strategy.volumeProfile ? (
+          <ProfileStrategySettings
+            value={strategy.volumeProfile}
+            onChange={(volumeProfile) =>
+              setStrategy({ ...strategy, volumeProfile })
+            }
+          />
+        ) : (
+          (['longEntry', 'shortEntry', 'longExit', 'shortExit'] as const).map(
+            (key) => (
+              <RuleEditor
+                key={key}
+                name={key.replace(/([A-Z])/g, ' $1')}
+                value={strategy[key]}
+                onChange={(v) => setStrategy({ ...strategy, [key]: v })}
+              />
+            ),
+          )
         )}
       </details>
       <details className="hub-disclosure">
@@ -480,34 +503,42 @@ export default function StrategyBuilder({
               'stopPct',
               'targetPct',
             ] as const
-          ).map((key) => (
-            <label key={key}>
-              {
+          )
+            .filter(
+              (key) =>
+                !strategy.volumeProfile ||
+                !['stopPct', 'targetPct'].includes(key),
+            )
+            .map((key) => (
+              <label key={key}>
                 {
-                  quantity: 'Fixed quantity',
-                  allocationPct: 'Equity allocation (%)',
-                  riskPct: 'Equity risk (%)',
-                  stopPct: 'Stop-loss (%)',
-                  targetPct: 'Take-profit (%)',
-                  initialCapital: 'Starting capital',
-                  commissionBps: 'Commission (bps)',
-                  slippageBps: 'Slippage (bps)',
-                }[key]
-              }
-              <input
-                type="number"
-                min="0"
-                step="any"
-                value={strategy[key] ?? ''}
-                onChange={(e) =>
-                  setStrategy({
-                    ...strategy,
-                    [key]: e.target.value ? Number(e.target.value) : undefined,
-                  })
+                  {
+                    quantity: 'Fixed quantity',
+                    allocationPct: 'Equity allocation (%)',
+                    riskPct: 'Equity risk (%)',
+                    stopPct: 'Stop-loss (%)',
+                    targetPct: 'Take-profit (%)',
+                    initialCapital: 'Starting capital',
+                    commissionBps: 'Commission (bps)',
+                    slippageBps: 'Slippage (bps)',
+                  }[key]
                 }
-              />
-            </label>
-          ))}
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={strategy[key] ?? ''}
+                  onChange={(e) =>
+                    setStrategy({
+                      ...strategy,
+                      [key]: e.target.value
+                        ? Number(e.target.value)
+                        : undefined,
+                    })
+                  }
+                />
+              </label>
+            ))}
           {(
             [
               'initialCapital',
@@ -572,25 +603,41 @@ export default function StrategyBuilder({
             <label>
               Parameter
               <select value={path} onChange={(e) => setPath(e.target.value)}>
-                {[
-                  'allocationPct',
-                  'stopPct',
-                  'targetPct',
-                  'quantity',
-                  'longEntry.conditions.0.left.period',
-                  'longEntry.conditions.0.right.period',
-                ].map((v) => (
+                {(strategy.volumeProfile
+                  ? [
+                      'volumeProfile.minRR',
+                      'volumeProfile.stopAtr',
+                      'volumeProfile.retestAtr',
+                      'volumeProfile.confirmationBars',
+                      'riskPct',
+                    ]
+                  : [
+                      'allocationPct',
+                      'stopPct',
+                      'targetPct',
+                      'quantity',
+                      'longEntry.conditions.0.left.period',
+                      'longEntry.conditions.0.right.period',
+                    ]
+                ).map((v) => (
                   <option key={v} value={v}>
-                    {{
-                      stopPct: 'Stop-loss (%)',
-                      targetPct: 'Take-profit (%)',
-                      quantity: 'Fixed quantity',
-                      allocationPct: 'Equity allocation (%)',
-                      'longEntry.conditions.0.left.period':
-                        'Long entry: first indicator period',
-                      'longEntry.conditions.0.right.period':
-                        'Long entry: comparison indicator period',
-                    }[v] ?? v}
+                    {(
+                      {
+                        stopPct: 'Stop-loss (%)',
+                        targetPct: 'Take-profit (%)',
+                        quantity: 'Fixed quantity',
+                        allocationPct: 'Equity allocation (%)',
+                        'longEntry.conditions.0.left.period':
+                          'Long entry: first indicator period',
+                        'longEntry.conditions.0.right.period':
+                          'Long entry: comparison indicator period',
+                        'volumeProfile.minRR': 'Minimum reward/risk to POC',
+                        'volumeProfile.stopAtr': 'SL buffer (ATR)',
+                        'volumeProfile.retestAtr': 'Retest tolerance (ATR)',
+                        'volumeProfile.confirmationBars': 'Confirmation expiry',
+                        riskPct: 'Equity risk (%)',
+                      } as Record<string, string>
+                    )[v] ?? v}
                   </option>
                 ))}
               </select>
@@ -770,7 +817,9 @@ export default function StrategyBuilder({
       {output && (
         <ResearchResults output={output} parameters={output.parameters ?? []} />
       )}
-      <StrategyProtection strategy={strategy} onChange={setStrategy} />
+      {!strategy.volumeProfile && (
+        <StrategyProtection strategy={strategy} onChange={setStrategy} />
+      )}
       <div className="hub-actions strategy-run-actions">
         <button disabled={busy} onClick={saveStrategy}>
           Save strategy

@@ -1,3 +1,4 @@
+import ProfileStrategyResearch from './ProfileStrategyResearch';
 import { useState } from 'react';
 import { STRATEGY_SOURCES, STRATEGY_TEMPLATES } from '../lib/strategyTemplates';
 import type { Strategy } from '../lib/strategy';
@@ -32,9 +33,9 @@ export default function StrategyCatalog({
   return (
     <div className="strategy-catalog">
       <p>
-        24 researched templates. Start with a trading idea, read its rules, then
-        test it on your loaded chart. Reddit discussions are research leads;
-        profitability is not established.
+        {STRATEGY_TEMPLATES.length} researched templates. Start with a trading
+        idea, read its rules, then test it on your loaded chart. Reddit
+        discussions are research leads; profitability is not established.
       </p>
       <div className="hub-fields">
         <label>
@@ -89,10 +90,10 @@ export default function StrategyCatalog({
           {current.name} · {current.category}
         </h4>
         <p>
-          <strong>Buy when:</strong> {current.entry}
+          <strong>Entry:</strong> {current.entry}
         </p>
         <p>
-          <strong>Sell when:</strong> {current.exit}
+          <strong>Exit:</strong> {current.exit}
         </p>
         <p>
           <strong>Source and adaptation:</strong> {current.adaptation}
@@ -105,23 +106,24 @@ export default function StrategyCatalog({
               target="_blank"
               rel="noreferrer"
             >
-              r/algotrading: {STRATEGY_SOURCES[key].title}
+              {STRATEGY_SOURCES[key].title}
             </a>
           ))}
         </p>
         <p>
-          Template defaults: long only, 95% equity per entry, 5 bps commission
-          and 5 bps slippage each side, no stop or target. Change these under
-          Position size & costs. This explanation describes the original
-          template; your edited rules are shown in step 2.
+          {current.strategy.volumeProfile
+            ? 'Template defaults: both directions, 0.5% equity risk, sweep-based SL, 50% POC / 50% opposite-edge targets, 5 bps commission and 5 bps slippage per side. Configure these in steps 2 and 3.'
+            : 'Template defaults: long only, 95% equity per entry, 5 bps commission and 5 bps slippage each side, no stop or target. Change these under Position size & costs.'}
+          This describes the original template; edited rules appear in step 2.
         </p>
       </article>
+      {current.strategy.volumeProfile && <ProfileStrategyResearch />}
       <details className="hub-disclosure">
         <summary>Historical quick tests · P&amp;L, drawdown & Sharpe</summary>
         <p>
-          Reference study, separate from your loaded chart. Every template was
-          tested on SPY, QQQ and GLD over 2016–2020 and 2021–2025. Results
-          include losing strategies.
+          Reference study, separate from your loaded chart. The original 24
+          daily templates were tested on SPY, QQQ and GLD over 2016–2020 and
+          2021–2025. Results include losing strategies.
         </p>
         <div className="hub-fields">
           <label>

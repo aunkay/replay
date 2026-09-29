@@ -71,7 +71,7 @@ for (const ticker of ['SPY', 'QQQ', 'GLD']) {
     };
     benchmark.longExit = emptyRule();
     for (const item of [
-      ...STRATEGY_TEMPLATES,
+      ...STRATEGY_TEMPLATES.filter((t) => !t.strategy.volumeProfile),
       { id: 'buy-hold', name: benchmark.name, strategy: benchmark },
     ]) {
       const result = runStrategy(item.strategy, bars, start, end);
@@ -102,12 +102,14 @@ for (const ticker of ['SPY', 'QQQ', 'GLD']) {
 const report = {
   generatedAt: new Date().toISOString(),
   engineVersion: '3',
-  strategies: STRATEGY_TEMPLATES.map((t) => ({
-    id: t.id,
-    strategy: t.strategy,
-    sources: t.sources,
-    adaptation: t.adaptation,
-  })),
+  strategies: STRATEGY_TEMPLATES.filter((t) => !t.strategy.volumeProfile).map(
+    (t) => ({
+      id: t.id,
+      strategy: t.strategy,
+      sources: t.sources,
+      adaptation: t.adaptation,
+    }),
+  ),
   method:
     'Fixed parameters, long-only, 95% of current equity per entry; $100,000 fresh capital per ticker/window; 5 bps commission + 5 bps slippage each side; adjusted daily yfinance OHLCV; prior data used only for indicator warmup; signal at close, execution next open; final position liquidated at final close. No stops/targets, leverage, cash interest or parameter search. Buy-and-hold uses the same sizing and costs. Later sample is a chronological check, not truly unseen: source ideas were published after portions of this history. No profitability guarantee; all results retained.',
   sharpe:

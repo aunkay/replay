@@ -72,11 +72,13 @@ export default function Alerts({
             }}
           >
             <option value="">Custom rule</option>
-            {STRATEGY_TEMPLATES.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
+            {STRATEGY_TEMPLATES.filter((t) => !t.strategy.volumeProfile).map(
+              (t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ),
+            )}
           </select>
         </label>
         <label>

@@ -1,3 +1,10 @@
+import {
+  profileReclaimPlans,
+  profileSessionKey,
+  profileEntryAllowed,
+  validateProfileSettings,
+  type ProfileReclaimSettings,
+} from './profileStrategy';
 import { advanceExecution, finerBarsForCandle } from './finerExecution';
 import { isValidMarketData, type MarketData } from './data';
 import {
@@ -33,6 +40,7 @@ export type Condition = {
 export type Rule = { join: 'and' | 'or'; conditions: Condition[] };
 export type Strategy = {
   version: 1;
+  volumeProfile?: ProfileReclaimSettings;
   executionMarket?: MarketData;
   dynamicProtection?: import('./engine').DynamicProtection;
   profitTargets?: { gainPct: number; percent: number }[];
@@ -61,6 +69,18 @@ export function validateStrategy(strategy: Strategy) {
   if (!strategy || strategy.version !== 1 || typeof strategy.name !== 'string')
     throw new Error('Invalid strategy definition');
   createAccount(strategy.config);
+  if (strategy.volumeProfile) {
+    validateProfileSettings(strategy.volumeProfile);
+    if (
+      strategy.stopPct ||
+      strategy.targetPct ||
+      strategy.profitTargets?.length ||
+      strategy.dynamicProtection
+    )
+      throw new Error(
+        'Volume-profile strategies use sweep stops and profile targets; remove percentage or dynamic exits.',
+      );
+  }
   const dynamic = strategy.dynamicProtection;
   if (dynamic) {
     if (
@@ -122,7 +142,7 @@ export function validateStrategy(strategy: Strategy) {
     throw new Error('Choose 252 or 365 trading days per year');
   if (strategy.riskPct && strategy.allocationPct)
     throw new Error('Choose either risk sizing or equity allocation');
-  if (strategy.riskPct && !strategy.stopPct)
+  if (strategy.riskPct && !strategy.stopPct && !strategy.volumeProfile)
     throw new Error('Risk sizing requires a stop');
   for (const name of [
     'longEntry',
@@ -275,12 +295,39 @@ export function runStrategy(
     throw new Error('Choose 2–100,000 candles and a valid evaluation range.');
   let state = advanceBar(createAccount(strategy.config), bars[start - 1]);
   const matches = createRuleEvaluator(bars);
+  const vp = strategy.volumeProfile;
+  if (vp && candleDuration(bars.slice(0, end)) >= 86400)
+    throw new Error(
+      'Volume-profile reclaim requires intraday candles (for example 5m).',
+    );
+  const plans = vp ? profileReclaimPlans(bars.slice(0, end), vp) : null;
+  const sessionKey = vp ? profileSessionKey(vp) : null;
+  let enteredAt = -1,
+    enteredSession = '';
   let conflicts = 0;
   for (let i = start; i < end; i++) {
     const bar = bars[i],
       signalIndex = i - 1;
-    const long = matches(strategy.longEntry, signalIndex),
-      short = matches(strategy.shortEntry, signalIndex);
+    const plan = plans?.[signalIndex];
+    const eligible = !!(
+      vp &&
+      plan &&
+      sessionKey!(bar.time) === plan.session &&
+      profileEntryAllowed(
+        plan,
+        bar.open,
+        vp,
+        strategy.config.slippageBps +
+          (strategy.config.spreadBps ?? 0) / 2 +
+          strategy.config.commissionBps * 2,
+      )
+    );
+    const long = vp
+        ? eligible && plan!.side === 'buy'
+        : matches(strategy.longEntry, signalIndex),
+      short = vp
+        ? eligible && plan!.side === 'sell'
+        : matches(strategy.shortEntry, signalIndex);
     // Signal exits and new market entries use the next open. The whole candle is
     // then processed for protection; no signal can execute on its own close.
     const finer = strategy.executionMarket
@@ -294,21 +341,37 @@ export function runStrategy(
       volume: finer[0]?.volume ?? bar.volume,
     };
     if (
-      (state.position.quantity > 0 &&
+      vp &&
+      state.position.quantity &&
+      (sessionKey!(bar.time) !== enteredSession || i - enteredAt >= vp.maxHold)
+    )
+      state = closePosition(state, openBar);
+    if (
+      !vp &&
+      ((state.position.quantity > 0 &&
         matches(strategy.longExit, signalIndex)) ||
-      (state.position.quantity < 0 && matches(strategy.shortExit, signalIndex))
+        (state.position.quantity < 0 &&
+          matches(strategy.shortExit, signalIndex)))
     )
       state = closePosition(state, openBar);
     if (long && short) conflicts++;
     if (!state.position.quantity && long !== short) {
       const side = long ? 'buy' : 'sell',
         sign = long ? 1 : -1;
-      const stopLoss = strategy.stopPct
-        ? bar.open * (1 - (sign * strategy.stopPct) / 100)
-        : undefined;
-      const takeProfit = strategy.targetPct
-        ? bar.open * (1 + (sign * strategy.targetPct) / 100)
-        : undefined;
+      const stopLoss =
+        vp && plan
+          ? plan.stop
+          : strategy.stopPct
+            ? bar.open * (1 - (sign * strategy.stopPct) / 100)
+            : undefined;
+      const takeProfit =
+        vp && plan
+          ? vp.target === 'opposite'
+            ? plan.opposite
+            : plan.poc
+          : strategy.targetPct
+            ? bar.open * (1 + (sign * strategy.targetPct) / 100)
+            : undefined;
       const budget = strategy.riskPct
         ? (getMetrics(state, bar.open).equity * strategy.riskPct) / 100
         : undefined;
@@ -345,16 +408,29 @@ export function runStrategy(
                 ) / 1e6
               : strategy.quantity),
           stopLoss,
-          takeProfit: strategy.profitTargets?.length ? undefined : takeProfit,
-          takeProfits: strategy.profitTargets?.map((t) => ({
-            price: bar.open * (1 + (sign * t.gainPct) / 100),
-            percent: t.percent,
-          })),
+          takeProfit:
+            vp?.target === 'scale' || strategy.profitTargets?.length
+              ? undefined
+              : takeProfit,
+          takeProfits:
+            vp?.target === 'scale' && plan
+              ? [
+                  { price: plan.poc, percent: 50 },
+                  { price: plan.opposite, percent: 50 },
+                ]
+              : strategy.profitTargets?.map((t) => ({
+                  price: bar.open * (1 + (sign * t.gainPct) / 100),
+                  percent: t.percent,
+                })),
           dynamicProtection: strategy.dynamicProtection,
           plannedRisk: sizing?.risk,
         },
         openBar,
       );
+      if (vp && state.position.quantity) {
+        enteredAt = i;
+        enteredSession = sessionKey!(bar.time);
+      }
     }
     state = strategy.executionMarket
       ? advanceExecution(

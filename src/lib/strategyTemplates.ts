@@ -1,3 +1,4 @@
+import { reclaimDefaults } from './profileStrategy';
 import {
   defaultStrategy,
   emptyRule,
@@ -10,6 +11,23 @@ import type { IndicatorId } from './indicators';
 const reddit = (id: string) =>
   `https://www.reddit.com/r/algotrading/comments/${id}/`;
 export const STRATEGY_SOURCES = {
+  profileReclaim: {
+    title:
+      'Sweep/reclaim concept: Rift Volume Profile Engine (community author, unverified performance)',
+    url: 'https://www.tradingview.com/script/aX0QgDb2-Rift-Volume-Profile-Engine/',
+  },
+  stopRisk: {
+    title: 'CME: stop placement and position sizing',
+    url: 'https://www.cmegroup.com/education/courses/trade-and-risk-management/proper-position-size',
+  },
+  volumeProfile: {
+    title: 'TradingView: volume profile concepts',
+    url: 'https://www.tradingview.com/support/solutions/43000502040-volume-profile-indicators-basic-concepts/',
+  },
+  profilePrecision: {
+    title: 'Sierra Chart: volume-by-price calculation and data precision',
+    url: 'https://www.sierrachart.com/index.php?page=doc/StudiesReference.php&ID=141',
+  },
   averages: {
     title: 'Moving-average crossover discussion',
     url: reddit('1ov3g5r'),
@@ -347,3 +365,28 @@ export const STRATEGY_TEMPLATES: StrategyTemplate[] = [
     ['indicators', 'macd'],
   ),
 ];
+
+STRATEGY_TEMPLATES.push({
+  id: 'profile-reclaim',
+  name: 'Volume profile sweep & reclaim',
+  category: 'Volume',
+  entry:
+    'Previous-session VAL/VAH sweep, reclaim, then a later retest and directional close inside the entry zone. Enter next open only if at least 1R remains to POC.',
+  exit: 'Stop beyond sweep extreme plus 0.2 ATR. Take 50% at POC and 50% at the opposite value edge. Exit next session open or after 24 bars.',
+  adaptation:
+    'Research hypothesis, not a proven edge or manipulation detector. Frozen prior-session profile; skips first loaded session. Requires intraday data. Two closes inside value are required; a sweep alone never enters. Default session timezone America/New_York: adjust for your market.',
+  sources: ['volumeProfile', 'profilePrecision', 'profileReclaim', 'stopRisk'],
+  strategy: {
+    ...defaultStrategy(),
+    name: 'Volume profile sweep & reclaim',
+    longEntry: emptyRule(),
+    shortEntry: emptyRule(),
+    longExit: emptyRule(),
+    shortExit: emptyRule(),
+    stopPct: undefined,
+    targetPct: undefined,
+    riskPct: 0.5,
+    volumeProfile: { ...reclaimDefaults },
+    config: { initialCapital: 100000, commissionBps: 5, slippageBps: 5 },
+  },
+});

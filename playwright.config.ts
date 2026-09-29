@@ -32,6 +32,7 @@ export default defineConfig({
         '**/iphone.spec.ts',
         '**/volume.spec.ts',
         '**/volume-profile.spec.ts',
+        '**/profile-strategy.spec.ts',
         '**/practice.spec.ts',
         '**/advanced-trading.spec.ts',
         '**/checkpoints.spec.ts',
