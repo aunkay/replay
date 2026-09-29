@@ -38,6 +38,7 @@ export default defineConfig({
         '**/checkpoints.spec.ts',
         '**/alerts.spec.ts',
         '**/telegram.spec.ts',
+        '**/watchlist.spec.ts',
         '**/background-live.spec.ts',
         '**/data-library.spec.ts',
         '**/extended-hours.spec.ts',

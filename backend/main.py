@@ -303,6 +303,9 @@ app.include_router(live_router)
 from backend.notifications import router as notification_router
 app.include_router(notification_router)
 
+from backend.watchlist import router as watchlist_router
+app.include_router(watchlist_router)
+
 dist = Path(__file__).resolve().parent.parent / "dist"
 if dist.is_dir() and (dist / "index.html").is_file():
     assets = dist / "assets"

@@ -49,6 +49,11 @@ class FixtureTicker:
             "Close": [offset + i * 2 + 1 for i in range(60+_live_extra.get(self.symbol,0))],
             "Volume": [100_000 + i * 1000 for i in range(60+_live_extra.get(self.symbol,0))],
         }, index=index)
+        if kwargs.get("auto_adjust") is False and self.symbol == "MSFT":
+            frame = frame.astype({"Close": float, "Low": float})
+            # Watchlist fixture: an observable down day without changing chart data.
+            frame.iloc[-1, frame.columns.get_loc("Close")] = frame.iloc[-2]["Close"] * .98
+            frame.iloc[-1, frame.columns.get_loc("Low")] = frame.iloc[-1]["Close"] - 1
         if kwargs.get("start"):
             start = pd.Timestamp(kwargs["start"], tz="UTC")
             end = pd.Timestamp(kwargs["end"], tz="UTC")

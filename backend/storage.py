@@ -43,6 +43,7 @@ def db():
         # busy_timeout applies. Initialize once before accepting other readers.
         conn.execute('PRAGMA journal_mode=WAL')
         conn.executescript('''
+        CREATE TABLE IF NOT EXISTS watchlist(id INTEGER PRIMARY KEY,payload TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS notification_settings(id INTEGER PRIMARY KEY,payload TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS notification_outbox(id TEXT PRIMARY KEY,message TEXT NOT NULL,status TEXT NOT NULL,attempts INTEGER NOT NULL,due REAL NOT NULL,error TEXT);
         CREATE TABLE IF NOT EXISTS datasets(id TEXT PRIMARY KEY,name TEXT NOT NULL,market TEXT NOT NULL,gaps TEXT NOT NULL,updated REAL NOT NULL);

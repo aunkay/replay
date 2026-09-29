@@ -1,3 +1,4 @@
+import WatchlistBanner from './components/WatchlistBanner';
 import { TelegramSettings } from './components/TelegramSettings';
 import PortfolioPanel from './components/PortfolioPanel';
 import { portfolioMetrics } from './lib/portfolio';
@@ -1111,6 +1112,7 @@ export default function App() {
             </div>
           </div>
         </header>
+        {!blind && <WatchlistBanner />}
 
         <main>
           <div className="page-heading">

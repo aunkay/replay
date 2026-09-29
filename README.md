@@ -30,9 +30,18 @@ A self-hosted market replay and paper trading app. Load historical prices, revea
 - **Blind exercises:** random fixed-length replay with hidden dates, saved seeds and explicit finish.
 - **Up to four synchronized charts:** independent intervals, indicators, drawings and comparisons; desktop grids and stacked phone panels.
 - **Visual strategies:** 24 source-linked templates, multi-timeframe rules, worker-backed backtests, up to 500 parameter combinations, rolling walk-forward validation, stability heatmaps and seeded Monte Carlo analysis.
+- **Market watchlist:** up to 10 saved tickers in an animated top banner, with prices, daily percentage changes, touch scrolling, and configurable shared polling.
 - **Optional Live mode:** shared yfinance polling, provisional candles, a separate closed-bar paper account, spaced requests and exponential throttling backoff. Live starts off; opt-in background monitoring continues paper orders and alerts after the browser closes and recovers after server restart.
 
 Strategies use the built-in visual rule builder. Replay does not execute Pine Script or connect to a live broker. Read the [practice and live guide](docs/practice-and-live.md) for execution rules and limits.
+
+## Market watchlist
+
+Open **Watchlist** in the top banner, enter up to 10 Yahoo symbols separated by commas or spaces, click **Add tickers**, then **Save watchlist**. You can remove or reorder symbols and choose 30-second, 1-minute (default), 2-minute or 5-minute updates. Green/red values show change against the preceding session close; these current, potentially delayed quotes are independent of historical replay. The banner is hidden during blind exercises.
+
+One server-side poller serves all devices. Requests share the Live/history provider limiter, stay at least 3 seconds apart, and apply exponential backoff on throttling. Intervals are targets rather than a guaranteed Yahoo quota. When market hours are available, closed markets refresh at most every 5 minutes. Polling stops within 45 seconds of the last visible browser tab closing or becoming hidden; saved symbols and cached quotes survive restarts. Stale or unavailable prices are labeled.
+
+The banner scrolls when the symbols do not fit. Use its pause button to swipe/scroll manually; reduced-motion settings also disable animation. **Enable quote polling** controls fetching separately from animation. Watchlist settings are shared across this self-hosted instance.
 
 ## Quick start
 

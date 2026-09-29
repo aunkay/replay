@@ -1,0 +1,225 @@
+.watchlist-banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 4px 18px;
+  border-bottom: 1px solid #293242;
+  background: #101722;
+  color: #d9e2f0;
+  min-width: 0;
+  flex-wrap: wrap;
+  z-index: 15;
+}
+.watchlist-settings {
+  flex-shrink: 0;
+}
+.watchlist-settings summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+  font-size: 12px;
+}
+.watchlist-settings summary span {
+  color: #8999ae;
+  font-size: 10px;
+}
+.watchlist-source {
+  font-size: 10px;
+  color: #8d9db2;
+  white-space: nowrap;
+}
+.watchlist-viewport {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.watchlist-viewport.is-paused {
+  overflow-x: auto;
+}
+.watchlist-track {
+  display: flex;
+  width: max-content;
+}
+.watchlist-track.is-scrolling {
+  animation: watchlist-ticker var(--ticker-duration) linear infinite;
+  will-change: transform;
+}
+.watchlist-banner:hover .watchlist-track,
+.watchlist-banner:focus-within .watchlist-track {
+  animation-play-state: paused;
+}
+.watchlist-group {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding-right: 24px;
+  flex-shrink: 0;
+}
+.watchlist-quote {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.watchlist-quote strong {
+  color: #e2e8f0;
+}
+.watchlist-quote.positive {
+  color: #36d2a5;
+}
+.watchlist-quote.negative {
+  color: #f17d91;
+}
+.watchlist-quote.neutral {
+  color: #b0bfd1;
+}
+.watchlist-quote small {
+  font-size: 9px;
+  color: #91a0b4;
+}
+.watchlist-quote .watchlist-stale {
+  color: #dfb97b;
+}
+.watchlist-motion {
+  min-width: 44px;
+  min-height: 44px;
+  color: #b9a5f5;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.watchlist-empty {
+  font-size: 12px;
+  color: #8999ae;
+  white-space: nowrap;
+}
+.watchlist-editor {
+  position: absolute;
+  left: 8px;
+  top: 100%;
+  z-index: 60;
+  width: min(480px, calc(100% - 16px));
+  box-sizing: border-box;
+  max-height: min(70dvh, calc(var(--app-viewport-height, 100dvh) - 140px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 18px;
+  background: #17202e;
+  border: 1px solid #465269;
+  border-radius: 8px;
+  box-shadow: 0 12px 36px #0008;
+}
+.watchlist-editor h3 {
+  margin: 0;
+}
+.watchlist-editor p {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #a5b5c9;
+}
+.watchlist-editor label {
+  display: block;
+  font-size: 12px;
+  margin: 12px 0 6px;
+}
+.watchlist-add {
+  display: flex;
+  gap: 6px;
+}
+.watchlist-add input {
+  flex: 1;
+  min-width: 0;
+}
+.watchlist-editor input:not([type='checkbox']),
+.watchlist-editor select {
+  min-height: 44px;
+  padding: 8px;
+  background: #222f42;
+  color: #ecf1f8;
+  border: 1px solid #51617a;
+  border-radius: 5px;
+  box-sizing: border-box;
+}
+.watchlist-editor select {
+  width: 100%;
+  margin-top: 6px;
+}
+.watchlist-editor button {
+  min-height: 44px;
+  cursor: pointer;
+}
+.watchlist-edit-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0;
+}
+.watchlist-edit-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.watchlist-edit-list b {
+  flex: 1;
+  font-size: 12px;
+}
+.watchlist-edit-list button {
+  min-width: 44px;
+}
+.watchlist-enable {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+.watchlist-message {
+  flex-basis: 100%;
+  margin: 0;
+  padding: 3px;
+  color: #e0b981;
+  font-size: 11px;
+}
+.watchlist-editor .watchlist-error {
+  color: #ee9f9b;
+}
+@keyframes watchlist-ticker {
+  to {
+    transform: translateX(calc(-1 * var(--ticker-distance)));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .watchlist-track.is-scrolling {
+    animation: none;
+    transform: none;
+  }
+  .watchlist-viewport {
+    overflow-x: auto;
+  }
+  .watchlist-group[aria-hidden='true'] {
+    display: none;
+  }
+}
+@media (max-width: 700px) {
+  .watchlist-banner {
+    padding: 2px 8px;
+    gap: 6px;
+  }
+  .watchlist-source {
+    max-width: 40px;
+    font-size: 9px;
+    white-space: normal;
+    line-height: 1.2;
+  }
+  .watchlist-quote {
+    font-size: 11px;
+  }
+  .watchlist-editor {
+    padding: 12px;
+  }
+}
