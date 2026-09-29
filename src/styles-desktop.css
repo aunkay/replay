@@ -1,0 +1,200 @@
+/* Keep occasional workspace tools together, leaving the chart above the fold. */
+.quick-tickers {
+  margin-bottom: 8px;
+}
+.quick-tickers > summary {
+  cursor: pointer;
+  padding: 10px;
+  font-size: 12px;
+}
+.quick-tickers .watchlist {
+  margin: 0;
+}
+.chart-focus-toggle {
+  display: none;
+}
+@media (min-width: 1001px) {
+  .app-main main {
+    max-width: none;
+    padding: 0 12px;
+  }
+  .topbar {
+    height: 44px;
+    padding: 0 14px;
+  }
+  .page-heading {
+    padding: 8px 0;
+    gap: 12px;
+  }
+  .page-heading .eyebrow,
+  .page-heading h1 > span {
+    display: none;
+  }
+  .page-heading h1 {
+    font-size: 18px;
+  }
+  .page-heading .button {
+    padding: 8px 12px;
+  }
+  .workspace-utilities {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .workspace-utilities > .workspace-tools {
+    display: contents;
+  }
+  .workspace-utilities .alerts-panel {
+    flex: 0 1 auto;
+    padding: 0 10px;
+    margin: 0;
+  }
+  .workspace-utilities .alerts-panel > summary {
+    display: list-item;
+    min-height: 36px;
+    align-content: center;
+    font-size: 11px;
+  }
+  .workspace-utilities .alerts-panel[open] {
+    flex-basis: 100%;
+    padding: 10px;
+  }
+  .workspace-utilities .button {
+    min-height: 36px;
+    padding: 7px 10px;
+  }
+  .workspace-utilities label {
+    font-size: 11px;
+  }
+  .workspace-utilities select {
+    min-height: 36px;
+    padding: 6px;
+  }
+  .quick-tickers {
+    position: relative;
+    margin: 0;
+    font-size: 11px;
+  }
+  .quick-tickers > summary {
+    padding: 10px;
+    border: 1px solid #333c50;
+    border-radius: 8px;
+    font-size: 11px;
+  }
+  .quick-tickers .watchlist {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 25;
+    width: 260px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 8px;
+    background: #171b23;
+  }
+  .quick-tickers .watchlist-label {
+    display: none;
+  }
+  .quick-tickers .watch-item {
+    justify-content: flex-start;
+    min-height: 36px;
+  }
+  .trading-layout {
+    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) 270px;
+  }
+  .chart-panel {
+    --primary-chart-height: max(620px, calc(100dvh - 214px));
+  }
+  .chart-heading {
+    padding: 9px 12px 5px;
+  }
+  .ohlc-row {
+    padding: 0 12px 5px;
+  }
+  .chart-display-settings {
+    margin-bottom: 5px;
+  }
+  .chart-focus-toggle {
+    display: inline-flex;
+  }
+  .chart-focus .trading-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .chart-focus .order-panel {
+    display: none;
+  }
+  .chart-focus-toggle[aria-pressed='true'] {
+    color: #c9b6ff;
+    border-color: #9172dc;
+  }
+}
+@media (min-width: 1001px) {
+  .chart-heading > div:nth-child(2) {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+  }
+  .chart-heading .instrument-price {
+    margin: 0;
+    font-size: 18px;
+  }
+  .chart-heading .instrument-logo {
+    width: 26px;
+    height: 26px;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .chart-heading {
+    padding-top: 6px;
+    padding-bottom: 4px;
+  }
+  .ohlc-row {
+    height: 22px;
+  }
+  .chart-display {
+    position: relative;
+    padding: 5px 10px;
+    margin: 0 10px 5px;
+  }
+  .chart-display-topline {
+    padding-right: 88px;
+  }
+  .chart-display .mobile-chart-help {
+    display: block;
+    position: absolute;
+    right: 9px;
+    top: 9px;
+    font-size: 10px;
+    color: #a99bce;
+  }
+  .chart-display-description:not(.is-open) {
+    display: none;
+  }
+  .chart-footer {
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+  .replay-controls {
+    padding: 8px 12px;
+  }
+  .chart-focus .page-heading {
+    display: none;
+  }
+  .chart-focus .workspace-utilities {
+    margin-top: 6px;
+  }
+  .chart-focus .chart-panel {
+    --primary-chart-height: max(620px, calc(100dvh - 150px));
+  }
+}
+@media (min-width: 1001px) {
+  /* A tall order ticket must not push chart playback below a laptop viewport. */
+  .trading-layout {
+    align-items: start;
+  }
+}

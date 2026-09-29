@@ -6,6 +6,7 @@ import './styles-chart-tools.css';
 import './styles-comparison.css';
 import './styles-mobile.css';
 import './styles-workspace.css';
+import './styles-desktop.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

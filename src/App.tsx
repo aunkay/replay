@@ -218,6 +218,20 @@ export default function App() {
 
   const [playing, setPlaying] = useState(false);
   const [chartExpanded, setChartExpanded] = useState(false);
+  const [chartFocus, setChartFocus] = useState(() => {
+    try {
+      return localStorage.getItem('replay-chart-focus') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem('replay-chart-focus', String(chartFocus));
+    } catch {
+      /* Layout works without storage. */
+    }
+  }, [chartFocus]);
   const [mobileSection, setMobileSection] = useState('chart');
   const [speed, setSpeed] = useState(1);
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -1076,7 +1090,11 @@ export default function App() {
         </div>
       </aside>
 
-      <div className="app-main" id="workspace" inert={Boolean(dialog)}>
+      <div
+        className={`app-main ${chartFocus ? 'chart-focus' : ''}`}
+        id="workspace"
+        inert={Boolean(dialog)}
+      >
         <header className="topbar">
           <div className="wordmark">
             replay<span className="wordmark-dot">.</span>
@@ -1142,180 +1160,233 @@ export default function App() {
               }}
             />
           )}
-          {!blind && !live.active && (
-            <DataLibrary
-              market={market}
-              onLoad={(next) => {
-                setPlaying(false);
-                library.detach();
-                setSession(freshSession(next, account.config));
-                setHoverBar(null);
-                setOrderPrice('');
-                setDrawingTool('cursor');
-                setSelectedDrawingId(null);
-              }}
-            />
-          )}
-          {!blind && (
-            <FinerExecution
-              session={session}
-              onChange={async (finer) => {
-                setPlaying(false);
-                if (finer) validateFiner(session.market, finer);
-                if (live.active)
-                  await live.command({
-                    type: 'finer-data',
-                    market: finer ?? null,
-                  });
-                else if (library.record)
-                  await library.command({
-                    type: 'finer-data',
-                    market: finer ?? null,
-                  });
-                else setSession({ ...session, finerMarket: finer });
-              }}
-            />
-          )}
-          {!blind && (
-            <PortfolioPanel
-              session={session}
-              comparisons={comparisons.flatMap((c) => (c.data ? [c.data] : []))}
-              onAdd={async (data) => {
-                setPlaying(false);
-                if (live.active)
-                  await live.command({ type: 'portfolio-add', market: data });
-                else if (library.record)
-                  await library.command({
-                    type: 'portfolio-add',
-                    market: data,
-                  });
-                else setSession(attachPortfolioMarket(session, data));
-              }}
-              onCommand={async (command: TradingCommand) => {
-                if (live.active) await live.command(command);
-                else if (library.record) await library.command(command);
-                else setSession(applyTradingCommand(session, command));
-              }}
-            />
-          )}
-          <div className="workspace-tools">
+          <div className="workspace-utilities">
+            <details className="quick-tickers">
+              <summary>Quick tickers</summary>
+              <div className="watchlist">
+                <span className="watchlist-label">
+                  <Activity size={14} /> QUICK SELECT
+                </span>
+                {WATCHLIST.map((item) => (
+                  <button
+                    key={item.ticker}
+                    className={`watch-item ${market.ticker === item.ticker ? 'selected' : ''}`}
+                    onClick={() => openData(item.ticker)}
+                  >
+                    <span
+                      className="watch-icon"
+                      style={{
+                        color: item.color,
+                        backgroundColor: `${item.color}15`,
+                      }}
+                    >
+                      {item.ticker === 'BTC-USD'
+                        ? '₿'
+                        : item.ticker.slice(0, 1)}
+                    </span>
+                    <strong>
+                      {item.ticker === 'BTC-USD' ? 'BTC' : item.ticker}
+                    </strong>
+                    <span className="watch-name">{item.name}</span>
+                    {market.ticker === item.ticker && (
+                      <span className="watch-dot" />
+                    )}
+                  </button>
+                ))}
+                <IconButton
+                  label="Search for another ticker"
+                  onClick={() => openData()}
+                >
+                  <Plus size={16} />
+                </IconButton>
+              </div>
+            </details>
+            {!blind && !live.active && (
+              <DataLibrary
+                market={market}
+                onLoad={(next) => {
+                  setPlaying(false);
+                  library.detach();
+                  setSession(freshSession(next, account.config));
+                  setHoverBar(null);
+                  setOrderPrice('');
+                  setDrawingTool('cursor');
+                  setSelectedDrawingId(null);
+                }}
+              />
+            )}
             {!blind && (
-              <Alerts
+              <FinerExecution
                 session={session}
-                onCommand={async (command: AlertCommand) => {
+                onChange={async (finer) => {
+                  setPlaying(false);
+                  if (finer) validateFiner(session.market, finer);
+                  if (live.active)
+                    await live.command({
+                      type: 'finer-data',
+                      market: finer ?? null,
+                    });
+                  else if (library.record)
+                    await library.command({
+                      type: 'finer-data',
+                      market: finer ?? null,
+                    });
+                  else setSession({ ...session, finerMarket: finer });
+                }}
+              />
+            )}
+            {!blind && (
+              <PortfolioPanel
+                session={session}
+                comparisons={comparisons.flatMap((c) =>
+                  c.data ? [c.data] : [],
+                )}
+                onAdd={async (data) => {
+                  setPlaying(false);
+                  if (live.active)
+                    await live.command({ type: 'portfolio-add', market: data });
+                  else if (library.record)
+                    await library.command({
+                      type: 'portfolio-add',
+                      market: data,
+                    });
+                  else setSession(attachPortfolioMarket(session, data));
+                }}
+                onCommand={async (command: TradingCommand) => {
                   if (live.active) await live.command(command);
                   else if (library.record) await library.command(command);
-                  else setSession(alertCommand(session, command));
+                  else setSession(applyTradingCommand(session, command));
                 }}
               />
             )}
-            {!blind && !live.active && (
-              <WorkspaceHub
-                session={session}
-                library={library}
-                onPause={() => setPlaying(false)}
-                onBlind={startBlind}
-                onCheckpoint={async (command: CheckpointCommand) => {
-                  setPlaying(false);
-                  if (library.record && command.action !== 'restore') {
-                    await library.command(command);
-                  } else {
-                    const next = applyCheckpoint(session, command);
-                    if (library.record) {
-                      const name = session.checkpoints?.find(
-                        (c) => c.id === command.id,
-                      )?.name;
-                      await library.save(`${name} · retry`, next);
-                    } else setSession(next);
-                  }
-                  setHoverBar(null);
-                  window.requestAnimationFrame(() =>
-                    window.dispatchEvent(new Event('replay:follow')),
-                  );
-                }}
-              />
-            )}
-            {!blind && (
+            <div className="workspace-tools">
+              {!blind && (
+                <Alerts
+                  session={session}
+                  onCommand={async (command: AlertCommand) => {
+                    if (live.active) await live.command(command);
+                    else if (library.record) await library.command(command);
+                    else setSession(alertCommand(session, command));
+                  }}
+                />
+              )}
+              {!blind && !live.active && (
+                <WorkspaceHub
+                  session={session}
+                  library={library}
+                  onPause={() => setPlaying(false)}
+                  onBlind={startBlind}
+                  onCheckpoint={async (command: CheckpointCommand) => {
+                    setPlaying(false);
+                    if (library.record && command.action !== 'restore') {
+                      await library.command(command);
+                    } else {
+                      const next = applyCheckpoint(session, command);
+                      if (library.record) {
+                        const name = session.checkpoints?.find(
+                          (c) => c.id === command.id,
+                        )?.name;
+                        await library.save(`${name} · retry`, next);
+                      } else setSession(next);
+                    }
+                    setHoverBar(null);
+                    window.requestAnimationFrame(() =>
+                      window.dispatchEvent(new Event('replay:follow')),
+                    );
+                  }}
+                />
+              )}
+              {!blind && (
+                <button
+                  className={`button ${live.active ? 'primary' : 'ghost'}`}
+                  aria-pressed={live.active}
+                  disabled={live.busy}
+                  onClick={async () => {
+                    setPlaying(false);
+                    const wasLive = live.active;
+                    if (!wasLive) {
+                      replayLibrary.current = library.record?.id ?? null;
+                      library.detach();
+                    }
+                    const success = await live.toggle();
+                    if (
+                      ((wasLive && success) || (!wasLive && !success)) &&
+                      replayLibrary.current
+                    ) {
+                      void library
+                        .open(replayLibrary.current)
+                        .catch((e) =>
+                          setNotice({ text: e.message, error: true }),
+                        );
+                      replayLibrary.current = null;
+                    }
+                  }}
+                >
+                  ● Live
+                </button>
+              )}
               <button
-                className={`button ${live.active ? 'primary' : 'ghost'}`}
-                aria-pressed={live.active}
-                disabled={live.busy}
-                onClick={async () => {
-                  setPlaying(false);
-                  const wasLive = live.active;
-                  if (!wasLive) {
-                    replayLibrary.current = library.record?.id ?? null;
-                    library.detach();
-                  }
-                  const success = await live.toggle();
-                  if (
-                    ((wasLive && success) || (!wasLive && !success)) &&
-                    replayLibrary.current
-                  ) {
-                    void library
-                      .open(replayLibrary.current)
-                      .catch((e) =>
-                        setNotice({ text: e.message, error: true }),
-                      );
-                    replayLibrary.current = null;
-                  }
-                }}
+                className="button ghost chart-focus-toggle"
+                aria-pressed={chartFocus}
+                onClick={() => setChartFocus((value) => !value)}
+                title="Use the order ticket space for charts"
               >
-                ● Live
+                {chartFocus ? 'Show order ticket' : 'Chart focus'}
               </button>
-            )}
-            <label>
-              Charts{' '}
-              <select
-                aria-label="Chart panel count"
-                value={panels.length + 1}
-                onChange={(e) => {
-                  const count = Number(e.target.value) - 1;
-                  setPanels((previous) =>
-                    Array.from(
-                      { length: count },
-                      (_, i) =>
-                        previous[i] ?? newPanel(market.ticker, market.interval),
-                    ),
-                  );
-                }}
-              >
-                {[1, 2, 3, 4].map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {panels.length > 0 && (
               <label>
-                <input
-                  type="checkbox"
-                  checked={linked}
-                  onChange={(e) => setLinked(e.target.checked)}
-                />{' '}
-                Link crosshair
+                Charts{' '}
+                <select
+                  aria-label="Chart panel count"
+                  value={panels.length + 1}
+                  onChange={(e) => {
+                    const count = Number(e.target.value) - 1;
+                    setPanels((previous) =>
+                      Array.from(
+                        { length: count },
+                        (_, i) =>
+                          previous[i] ??
+                          newPanel(market.ticker, market.interval),
+                      ),
+                    );
+                  }}
+                >
+                  {[1, 2, 3, 4].map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
               </label>
-            )}
-            {panels.length > 0 && (
-              <label>
-                <input
-                  type="checkbox"
-                  checked={linkedRange}
-                  onChange={(e) => setLinkedRange(e.target.checked)}
-                />{' '}
-                Link time range
-              </label>
-            )}
-            {blind && (
-              <>
-                <span>
-                  Blind exercise · {cursor - startCursor} /{' '}
-                  {session.blind!.end - startCursor} candles
-                </span>
-                <button onClick={finishBlind}>Finish exercise</button>
-              </>
-            )}
+              {panels.length > 0 && (
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={linked}
+                    onChange={(e) => setLinked(e.target.checked)}
+                  />{' '}
+                  Link crosshair
+                </label>
+              )}
+              {panels.length > 0 && (
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={linkedRange}
+                    onChange={(e) => setLinkedRange(e.target.checked)}
+                  />{' '}
+                  Link time range
+                </label>
+              )}
+              {blind && (
+                <>
+                  <span>
+                    Blind exercise · {cursor - startCursor} /{' '}
+                    {session.blind!.end - startCursor} candles
+                  </span>
+                  <button onClick={finishBlind}>Finish exercise</button>
+                </>
+              )}
+            </div>
           </div>
           {panels.length > 0 && (
             <nav className="chart-jump-strip" aria-label="Chart panels">
@@ -1389,41 +1460,6 @@ export default function App() {
               ))}
             </section>
           )}
-          <div className="watchlist">
-            <span className="watchlist-label">
-              <Activity size={14} /> QUICK SELECT
-            </span>
-            {WATCHLIST.map((item) => (
-              <button
-                key={item.ticker}
-                className={`watch-item ${market.ticker === item.ticker ? 'selected' : ''}`}
-                onClick={() => openData(item.ticker)}
-              >
-                <span
-                  className="watch-icon"
-                  style={{
-                    color: item.color,
-                    backgroundColor: `${item.color}15`,
-                  }}
-                >
-                  {item.ticker === 'BTC-USD' ? '₿' : item.ticker.slice(0, 1)}
-                </span>
-                <strong>
-                  {item.ticker === 'BTC-USD' ? 'BTC' : item.ticker}
-                </strong>
-                <span className="watch-name">{item.name}</span>
-                {market.ticker === item.ticker && (
-                  <span className="watch-dot" />
-                )}
-              </button>
-            ))}
-            <IconButton
-              label="Search for another ticker"
-              onClick={() => openData()}
-            >
-              <Plus size={16} />
-            </IconButton>
-          </div>
 
           <div
             className={`trading-layout ${blind ? 'blind-workspace' : ''} ${panels.length ? 'multi-chart-layout' : ''}`}
@@ -1439,10 +1475,7 @@ export default function App() {
                 aria-label={chartExpanded ? 'Expanded chart' : undefined}
                 ref={chartPanel}
                 style={{
-                  minHeight:
-                    740 +
-                    chartWorkspace.oscillatorCount * 115 +
-                    activeComparisonCount * 110,
+                  minHeight: `calc(var(--primary-chart-height, 740px) + ${chartWorkspace.oscillatorCount * 115 + activeComparisonCount * 110}px)`,
                 }}
               >
                 {chartExpanded && (
