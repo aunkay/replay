@@ -1133,23 +1133,6 @@ export default function App() {
         {!blind && <WatchlistBanner />}
 
         <main>
-          <div className="page-heading">
-            <div>
-              <div className="eyebrow">THE MARKET, ON YOUR TERMS</div>
-              <h1>
-                Market replay <span>Go back. Trade forward.</span>
-              </h1>
-            </div>
-            <div className="heading-actions">
-              <button className="button ghost" onClick={exportSession}>
-                <Download size={15} /> Export session
-              </button>
-              <button className="button primary" onClick={() => openData()}>
-                <Plus size={17} /> Load market data
-              </button>
-            </div>
-          </div>
-
           {!live.active && !blind && (
             <BackgroundMonitors
               onConnect={async (id) => {
@@ -1386,6 +1369,14 @@ export default function App() {
                   <button onClick={finishBlind}>Finish exercise</button>
                 </>
               )}
+            </div>
+            <div className="heading-actions">
+              <button className="button ghost" onClick={exportSession}>
+                <Download size={15} /> Export session
+              </button>
+              <button className="button primary" onClick={() => openData()}>
+                <Plus size={17} /> Load market data
+              </button>
             </div>
           </div>
           {panels.length > 0 && (

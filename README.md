@@ -20,7 +20,7 @@ A self-hosted market replay and paper trading app. Load historical prices, revea
 - **12 drawing tools:** trendlines, rays, horizontal and vertical lines, Fibonacci tools, and more, with undo and redo.
 - **Compare six tickers:** one base instrument plus five comparison tickers, using the same interval. Keep the base price readout alongside normalized comparisons.
 - **Flexible scales:** price, percentage, indexed-to-100, ratio, log return, z-score, and min–max normalization, plus logarithmic price spacing where applicable.
-- **Laptop chart space:** compact workspace tools, a Quick tickers menu, and a saved Chart focus toggle that hides the order ticket and heading for wider session profiles. Use Show order ticket to return to trading.
+- **Laptop chart space:** compact workspace tools, a Quick tickers menu, and a saved Chart focus toggle that hides the order ticket for wider session profiles. Use Show order ticket to return to trading.
 - **Mobile layout:** touch controls, an iPhone 13 browser test suite, and a SwiftUI/WKWebView starter for a future self-hosted iOS app.
 - **Protected trades and risk sizing:** trailing stops, break-even activation, up to three take-profit levels, draggable brackets, and cash or percentage-equity risk budgets.
 - **Portfolio trading:** trade the base and five comparisons with shared cash, buying power, positions, journals and portfolio P&L.

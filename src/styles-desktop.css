@@ -22,26 +22,12 @@
     height: 44px;
     padding: 0 14px;
   }
-  .page-heading {
-    padding: 8px 0;
-    gap: 12px;
-  }
-  .page-heading .eyebrow,
-  .page-heading h1 > span {
-    display: none;
-  }
-  .page-heading h1 {
-    font-size: 18px;
-  }
-  .page-heading .button {
-    padding: 8px 12px;
-  }
   .workspace-utilities {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 6px;
-    margin-bottom: 8px;
+    margin: 6px 0 8px;
   }
   .workspace-utilities > .workspace-tools {
     display: contents;
@@ -182,12 +168,6 @@
   .replay-controls {
     padding: 8px 12px;
   }
-  .chart-focus .page-heading {
-    display: none;
-  }
-  .chart-focus .workspace-utilities {
-    margin-top: 6px;
-  }
   .chart-focus .chart-panel {
     --primary-chart-height: max(620px, calc(100dvh - 150px));
   }
@@ -196,5 +176,17 @@
   /* A tall order ticket must not push chart playback below a laptop viewport. */
   .trading-layout {
     align-items: start;
+  }
+}
+
+.workspace-utilities > .heading-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 6px 0;
+}
+@media (min-width: 1001px) {
+  .workspace-utilities > .heading-actions {
+    margin: 0 0 0 auto;
   }
 }
